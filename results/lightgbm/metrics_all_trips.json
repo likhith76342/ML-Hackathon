@@ -1,0 +1,70 @@
+{
+  "model": "lightgbm",
+  "family": "boosting",
+  "config": {
+    "memory": null,
+    "verbose": false,
+    "model__boosting_type": "gbdt",
+    "model__class_weight": null,
+    "model__colsample_bytree": 0.8,
+    "model__importance_type": "split",
+    "model__learning_rate": 0.05,
+    "model__max_depth": -1,
+    "model__min_child_samples": 20,
+    "model__min_child_weight": 0.001,
+    "model__min_split_gain": 0.0,
+    "model__n_estimators": 163,
+    "model__n_jobs": -1,
+    "model__num_leaves": 31,
+    "model__objective": "binary",
+    "model__random_state": 42,
+    "model__reg_alpha": 0.0,
+    "model__reg_lambda": 0.0,
+    "model__subsample": 0.8,
+    "model__subsample_for_bin": 200000,
+    "model__subsample_freq": 1,
+    "model__deterministic": true,
+    "model__force_row_wise": true,
+    "model__verbose": -1,
+    "early_stopping_rounds": 50,
+    "early_stopping_val_fraction_of_trips": 0.15,
+    "cv_best_iterations": [
+      163,
+      169,
+      131,
+      302,
+      129
+    ],
+    "final_n_estimators": 163,
+    "excluded_trips": [],
+    "dataset_version": 2
+  },
+  "cv_macro_f1_mean": 0.9048763816911052,
+  "cv_macro_f1_std": 0.020935210735404268,
+  "cv_top1_mean": 0.7663852405758089,
+  "cv_top1_std": 0.09770846350396274,
+  "cv_log_loss_mean": 0.1182278978968165,
+  "train_top1": 0.7601539221848506,
+  "train_macro_f1": 0.9104178052267713,
+  "test_accuracy": 0.9575932538175188,
+  "test_precision": 0.8636803613680362,
+  "test_recall": 0.8405379945572535,
+  "test_macro_f1": 0.9136021565204455,
+  "test_log_loss": 0.1041238646033827,
+  "test_top1": 0.8562630480167015,
+  "test_candidate_miss_rate": 0.0027139874739039666,
+  "test_route_continuity_argmax": null,
+  "test_confusion_matrix": [
+    [
+      109987,
+      2535
+    ],
+    [
+      3047,
+      16061
+    ]
+  ],
+  "train_time_s": 8.444405995018315,
+  "inference_ms_per_point": 0.015407279333088057,
+  "seed": 42
+}
