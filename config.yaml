@@ -16,3 +16,4 @@ api:
   host: 0.0.0.0
   port: 8000
   eval_data_dir: data/raw/student_test   # demo day: point at the evaluator folder (or set EVAL_DATA_DIR)
+  max_polyline_points: 5000              # display thinning per polyline sent to the UI (metrics use full data)
