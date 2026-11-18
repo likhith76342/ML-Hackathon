@@ -1,0 +1,39 @@
+{
+  "emission_source": "placeholder",
+  "split": "student_test",
+  "hmm_config": {
+    "beta": 20.0,
+    "w_e": 2.0,
+    "unreachable_penalty": -100.0,
+    "clip_to_penalty": true,
+    "gap_break_s": 30.0,
+    "emission_eps": 1e-09,
+    "min_cutoff_m": 500.0,
+    "cutoff_factor": 2.0,
+    "backward_tolerance_m": 30.0,
+    "emission_source": "placeholder"
+  },
+  "candidate_miss_rate_pooled": 0.0027139874739039666,
+  "upper_bound_top1": 0.997286012526096,
+  "decoder_ms_per_point_mean": 0.25891732991991534,
+  "summary": [
+    {
+      "method": "Classifier-only argmax",
+      "top1_pooled": 0.5460334029227557,
+      "top1_mean_trip": 0.5698171570854583,
+      "continuity_mean_trip": 0.8427620566230237,
+      "route_precision": 0.4190225418808652,
+      "route_recall": 0.9897569014122775,
+      "route_f1": 0.5826800756707445
+    },
+    {
+      "method": "Classifier + HMM",
+      "top1_pooled": 0.9140918580375783,
+      "top1_mean_trip": 0.9260515824465715,
+      "continuity_mean_trip": 0.9920380165359892,
+      "route_precision": 0.9173564118755678,
+      "route_recall": 0.988120302440692,
+      "route_f1": 0.9498481343267173
+    }
+  ]
+}
