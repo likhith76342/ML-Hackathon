@@ -1,0 +1,8 @@
+,value
+total_trips,90
+train_trips,80
+student_test_trips,10
+trips_with_gap_over_30s,30
+trips_with_duplicate_timestamps,0
+trips_with_nonpositive_dt,0
+rows_with_invalid_coordinates,0
