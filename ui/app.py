@@ -98,12 +98,6 @@ def build_map(result: dict) -> folium.Map:
     center = gps[len(gps) // 2] if gps else [0.0, 0.0]
     m = folium.Map(location=center, zoom_start=13, tiles="OpenStreetMap", control_scale=True)
 
-    fg_gps = folium.FeatureGroup(name="GPS points (blue)", show=True)
-    for lat, lon in gps:
-        folium.CircleMarker([lat, lon], radius=2, color="#1f77b4", weight=1,
-                            fill=True, fill_opacity=0.8).add_to(fg_gps)
-    fg_gps.add_to(m)
-
     fg_pred = folium.FeatureGroup(name="Predicted route (red)", show=True)
     for line in pred:
         if len(line) >= 2:
@@ -116,6 +110,12 @@ def build_map(result: dict) -> folium.Map:
             if len(line) >= 2:
                 folium.PolyLine(line, color="#ff7f0e", weight=3, opacity=0.8, dash_array="6 4").add_to(fg_clf)
         fg_clf.add_to(m)
+
+    fg_gps = folium.FeatureGroup(name="GPS points (blue)", show=True)
+    for lat, lon in gps:
+        folium.CircleMarker([lat, lon], radius=2, color="#1f77b4", weight=1,
+                            fill=True, fill_opacity=0.8).add_to(fg_gps)
+    fg_gps.add_to(m)
 
     folium.LayerControl(collapsed=False).add_to(m)
     m.get_root().html.add_child(Element(LEGEND_HTML.format(orange=ORANGE_ROW if clf else "")))
@@ -204,8 +204,10 @@ def main() -> None:
         st.caption(f"Model: {health.get('model', '?')}")
     result = st.session_state.get("result") or {}
     if health.get("mode") == "mock" or result.get("mock"):
-        st.error("MOCK MODE: no trained model loaded. The red line is just the GPS track; accuracy and route metrics are N/A.",
-                 icon="🚨")
+        st.error("MOCK MODE: no trained model loaded. The red line is just the GPS track; accuracy and route "
+                 "metrics are N/A.", icon="🚨")
+    else:
+        st.caption(f"Model: {health.get('model', '?')}")
     if not trips:
         st.warning("The API reports no trips.")
         return
@@ -231,7 +233,10 @@ def main() -> None:
     if st.session_state.get("error"):
         st.error(st.session_state["error"], icon="⚠️")
     if st.session_state.get("result"):
-        render_result(st.session_state["result"])
+        res = st.session_state["result"]
+        if not res.get("mock") and not res.get("hmm_used", True):
+            st.warning("HMM not available yet: showing classifier-only route", icon="⚠️")
+        render_result(res)
     elif not st.session_state.get("error"):
         st.info("Pick a trip and click **Run PathSnap**.")
 
