@@ -156,15 +156,36 @@ The API URL can also be changed in the UI sidebar. Click **Reconnect / refresh t
 - From **Laptop 2's browser**, open `http://<laptop1-ip>:8000/health` before starting the UI. It must show `"status":"ok"`.
 - Run every trip in the list through the UI once, end to end, including the large ones.
 
-### How to tell if you're in mock mode
+### Choosing the model (`PATHSNAP_MODEL`)
 
-Mock mode is used automatically when `artifacts/final_model.joblib` doesn't exist. The API then works end to end, but the "predicted route" is just the raw GPS track joined up and **every accuracy and route metric is null** (only the plain GPS point count `n_points` is filled in). Nothing is made up. You can tell by any of these:
+The API serves the classifier at `PATHSNAP_MODEL`. If that isn't set, it uses `api.model_path` in `config.yaml` (default `artifacts/final_model.joblib`). Relative paths resolve against the repo root. The model is loaded once at startup, so restart the API after changing it.
 
-- the API console prints `*** MOCK MODE ... ***` at startup and a `MOCK MODE` warning on each request, and every request line says `mode=MOCK`;
-- `GET /health` returns `"mode": "mock"`, and every `/predict` response has `"mock": true`;
-- the UI shows a red **MOCK MODE: no trained model loaded** banner, and all metrics read N/A.
+- Feature columns come from `artifacts/feature_columns.json` if it exists, otherwise from `pathsnap.features.FEATURE_COLUMNS`.
+- The HMM config comes from `artifacts/hmm_config.json` if it exists, otherwise `{"gap_break_s": <config.yaml gap_break_s>}`.
+- If `pathsnap.hmm` raises `NotImplementedError`, the API serves the classifier-only route and returns `"hmm_used": false`. Any other pipeline error is a 500.
 
-When the real model lands in `artifacts/`, restart the API. It will report `mode: real` and run `pathsnap.pipeline.predict_trip`. The swap point is `api/service.py`.
+Until the tuned final model exists, run with the LightGBM model:
+
+```bash
+export PATHSNAP_MODEL=results/lightgbm/model.joblib        # Windows PowerShell: $env:PATHSNAP_MODEL = "results/lightgbm/model.joblib"
+uvicorn api.main:app --host 0.0.0.0 --port 8000
+```
+
+### Real vs mock mode
+
+Mock mode is used automatically when the model file doesn't exist. The API still works end to end, but the "predicted route" is just the raw GPS track joined up and **every accuracy and route metric is null**. Only the plain GPS point count `n_points` is filled in. Nothing is made up.
+
+| | Real | Mock |
+|---|---|---|
+| API startup log | `mode : REAL (model .../model.joblib)` | `mode : MOCK (no model at ...)`, plus a `*** MOCK MODE ***` warning |
+| Request log line | `mode=REAL model=model.joblib hmm=yes ...` with the Top-1 | `mode=MOCK ...`, metrics `N/A` |
+| `GET /health` | `"mode": "real", "model": "model.joblib"` | `"mode": "mock", "model": "mock (no model)"` |
+| `/predict` response | `"mock": false`, `"hmm_used": true` (or `false` without an HMM) | `"mock": true`, `"hmm_used": false` |
+| UI | small caption `Model: model.joblib` | red **MOCK MODE: no trained model loaded** banner |
+
+In real mode without an HMM, the UI shows a yellow **HMM not available yet: showing classifier-only route** notice.
+
+Metrics are computed server-side in `api/evaluate.py`, the only module that reads `.route`, using the shared functions in `pathsnap.labels` and `pathsnap.route_metrics`. They are computed on the full track. Only scalar values reach the response. If a trip folder has no `.route`, its accuracy metrics are null.
 
 ### Tests
 
@@ -172,7 +193,15 @@ When the real model lands in `artifacts/`, restart the API. It will report `mode
 pytest tests/
 ```
 
-These need `data/raw/student_test` and skip the data-dependent tests if it's missing. They check every endpoint, run `/predict` on every student-test trip, check that no ground-truth key ever appears in a response, and run the geometry helper on a real route.
+These need `data/raw/student_test`, and skip the data-dependent tests if it's missing. Real-mode tests also need `results/lightgbm/model.joblib`, and the skew tests need `data/processed/test_candidates.parquet`. The tests cover:
+
+- every endpoint, in mock and in real mode;
+- `/predict` on every student-test trip;
+- that no ground-truth key ever appears in a response;
+- that the API's point-weighted Top-1 equals the trainer's `test_top1`;
+- that inference candidates match the training parquet;
+- that the prediction path runs with `load_route` disabled and no `.route` file;
+- the geometry helper on a real route.
 
 ---
 

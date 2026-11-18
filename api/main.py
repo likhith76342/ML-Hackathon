@@ -15,7 +15,7 @@ import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -69,7 +69,8 @@ async def lifespan(app: FastAPI):
     trips = discover_trips(data_dir)
     service = PredictionService()
     app.state.data_dir, app.state.trips, app.state.service = data_dir, trips, service
-    banner = "MOCK (no trained model - metrics will be null)" if service.mock else f"REAL ({service.model_name})"
+    banner = (f"MOCK (no model at {service.model_path} - metrics will be null)" if service.mock
+              else f"REAL (model {service.model_path})")
     log.info("=" * 78)
     log.info("PathSnap API starting")
     log.info("  mode     : %s", banner)
@@ -77,22 +78,18 @@ async def lifespan(app: FastAPI):
     log.info("  trips    : %d -> %s", len(trips), ", ".join(str(t) for t in trips))
     log.info("=" * 78)
     if service.mock:
-        log.warning("*** MOCK MODE: artifacts/%s not found. Predictions are NOT real. ***",
-                    service.model_path.name)
+        log.warning("*** MOCK MODE: %s not found. Predictions are NOT real. ***", service.model_path)
     yield
 
 
-app = FastAPI(title="PathSnap API", version="0.1.0", lifespan=lifespan)
-app.add_middleware(
-    CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST"], allow_headers=["*"],
-)
+router = APIRouter()
 
 
 class PredictRequest(BaseModel):
     trip_id: int
 
 
-@app.get("/health")
+@router.get("/health")
 def health(request: Request) -> dict:
     s: PredictionService = request.app.state.service
     return {
@@ -104,7 +101,7 @@ def health(request: Request) -> dict:
     }
 
 
-@app.get("/trips")
+@router.get("/trips")
 def trips(request: Request) -> dict:
     return {"trips": [{"trip_id": t, "n_points": n} for t, n in sorted(request.app.state.trips.items())]}
 
@@ -115,7 +112,7 @@ def _fmt(v, pct: bool = False) -> str:
     return f"{v * 100:.2f}%" if pct else (f"{v:.1f}ms" if isinstance(v, float) else str(v))
 
 
-@app.post("/predict")
+@router.post("/predict")
 def predict(body: PredictRequest, request: Request) -> dict:
     client = request.client.host if request.client else "?"
     state = request.app.state
@@ -136,11 +133,25 @@ def predict(body: PredictRequest, request: Request) -> dict:
 
     m, t = out["metrics"], out["timings_ms"]
     log.info(
-        "PREDICT trip=%-3s client=%-15s points=%-6s mode=%-4s | candidates=%s model=%s viterbi=%s total=%s"
-        " | top1_hmm=%s top1_argmax=%s route_f1=%s",
-        tid, client, out.get("n_gps_points", "?"), service.mode.upper(),
+        "PREDICT trip=%-3s client=%-15s points=%-6s mode=%-4s model=%s hmm=%s"
+        " | candidates=%s model=%s viterbi=%s total=%s | top1_argmax=%s top1_hmm=%s route_f1=%s",
+        tid, client, out.get("n_gps_points", "?"), service.mode.upper(), service.model_name,
+        "yes" if out.get("hmm_used") else "no",
         _fmt(t.get("candidates")), _fmt(t.get("model")), _fmt(t.get("viterbi")), _fmt(t.get("total")),
-        _fmt(m.get("top1_point_accuracy_hmm"), pct=True), _fmt(m.get("top1_point_accuracy_argmax"), pct=True),
+        _fmt(m.get("top1_point_accuracy_argmax"), pct=True), _fmt(m.get("top1_point_accuracy_hmm"), pct=True),
         _fmt(m.get("route_f1"), pct=True),
     )
     return {"trip_id": tid, "mode": service.mode, **out}
+
+
+def create_app() -> FastAPI:
+    """A fresh app; config (EVAL_DATA_DIR, PATHSNAP_MODEL) is read when it starts up."""
+    application = FastAPI(title="PathSnap API", version="0.2.0", lifespan=lifespan)
+    application.add_middleware(
+        CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST"], allow_headers=["*"],
+    )
+    application.include_router(router)
+    return application
+
+
+app = create_app()
