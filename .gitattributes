@@ -1,0 +1,10 @@
+# Normalise line endings so Windows and Mac/Linux teammates don't create whole-file diffs
+* text=auto eol=lf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+# Binary artifacts: never try to merge these
+*.parquet binary
+*.joblib binary
+*.pkl binary
+*.png binary
+*.pdf binary

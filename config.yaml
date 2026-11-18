@@ -6,6 +6,7 @@ results_dir: results
 figures_dir: reports/figures
 
 seed: 42
+dataset_version: 1            # Zubed bumps this when features/candidates change -> everyone retrains
 candidate_radius_m: 50         # arcs within this distance of a GPS point
 max_candidates: 10             # keep the K nearest within the radius
 n_cv_folds: 5                  # GroupKFold by trip_id on the 80 training trips

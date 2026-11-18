@@ -21,8 +21,8 @@ import pandas as pd
 class Trip:
     trip_id: int
     trip_dir: Path
-    track: pd.DataFrame   # columns: lon, lat, t   (geo.py may add x, y)
-    nodes: pd.DataFrame   # columns: lon, lat      (geo.py may add x, y)
+    track: pd.DataFrame   # columns: lon, lat, t   (+ x, y after geo.add_xy)
+    nodes: pd.DataFrame   # columns: lon, lat      (+ x, y after geo.add_xy)
     arcs: pd.DataFrame    # columns: from_node, to_node
 
 
