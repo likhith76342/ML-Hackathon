@@ -19,7 +19,7 @@ def _line_points(lines: Iterable[Iterable[tuple[float, float]]]):
 
 
 def make_trip_map(gps_latlon, network_lines=None, reference_lines=None, predicted_lines=None,
-                  classifier_only_lines=None):
+                  classifier_only_lines=None, tiles="Esri.WorldStreetMap"):
     """Build a layered Folium map for one trip.
 
     ``gps_latlon`` is already in Folium order: ``(lat, lon)``.
@@ -30,7 +30,26 @@ def make_trip_map(gps_latlon, network_lines=None, reference_lines=None, predicte
     if not gps:
         raise ValueError("gps_latlon must contain at least one point")
     centre = [sum(p[0] for p in gps) / len(gps), sum(p[1] for p in gps) / len(gps)]
-    fmap = folium.Map(location=centre, zoom_start=13, control_scale=True)
+    # Do not use OpenStreetMap's default tile endpoint here.  It is a
+    # volunteer-run service with strict usage requirements and can return 403
+    # for a locally opened report containing many tiles.  Esri's public street
+    # tiles are a suitable report/demo basemap and require no API key.
+    tile_options = {
+        "Esri.WorldStreetMap": {
+            "tiles": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+            "attr": "Tiles &copy; Esri — Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom, 2023",
+        },
+        "CartoDB.Positron": {
+            "tiles": "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+            "attr": "&copy; OpenStreetMap contributors &copy; CARTO",
+        },
+    }
+    if tiles not in tile_options:
+        raise ValueError(f"Unsupported basemap: {tiles}. Choose one of {sorted(tile_options)}")
+    basemap = tile_options[tiles]
+    fmap = folium.Map(location=centre, zoom_start=13, control_scale=True,
+                      tiles=basemap["tiles"], attr=basemap["attr"],
+                      name=tiles)
 
     gps_group = FeatureGroup(name="GPS points", show=True)
     for lat, lon in gps:

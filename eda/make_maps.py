@@ -38,14 +38,16 @@ def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     # Use compact examples so the HTML remains practical to open and submit.
     # The EDA tables still cover every trip.
-    for split, trip_id in (("train", 5), ("student_test", 7)):
+    for split, trip_id in (("train", 5),):
         tdir = trip_dir(DATA / split, trip_id)
         trip = load_trip(tdir)
         gps = list(zip(trip.track["lat"], trip.track["lon"]))
-        network = _network_lines(trip)
+        # Keep the committed example small. Full network layers are generated
+        # by make_trip_map when needed, but are not committed as multi-MB HTML.
+        network = None
         reference = _route_lines(trip, load_route(tdir)) if (tdir / f"{tdir.name}.route").exists() else None
         fmap = make_trip_map(gps, network_lines=network, reference_lines=reference)
-        output = OUT / f"{split}_{trip_id:08d}.html"
+        output = OUT / "example_trip.html"
         fmap.save(output)
         print(f"Wrote {output}")
 

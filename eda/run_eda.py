@@ -71,7 +71,7 @@ def main() -> None:
             rows.append(_summarise_trip(split, trip_id))
     summary = pd.DataFrame(rows).sort_values(["split", "trip_id"])
     TABLES.mkdir(parents=True, exist_ok=True)
-    summary.to_csv(TABLES / "trip_summary.csv", index=False)
+    summary.to_csv(TABLES / "trip_summary_partitioned.csv", index=False)
 
     # 1. How many observations does each trip contribute?
     plt.figure(figsize=(10, 4))
@@ -109,11 +109,14 @@ def main() -> None:
 
     # 4. Network size shows the computational range of candidate search.
     plt.figure(figsize=(8, 4))
-    plt.scatter(summary["nodes"], summary["arcs"], c=summary["gps_points"], cmap="viridis")
+    for split, group in summary.groupby("split"):
+        plt.scatter(group["nodes"], group["arcs"], c=group["gps_points"], cmap="viridis",
+                    label=split, edgecolors="black", linewidths=0.25)
     plt.colorbar(label="GPS points")
     plt.xlabel("Road-network nodes")
     plt.ylabel("Directed road arcs")
-    plt.title("Road-network size per trip")
+    plt.title("Road-network size per trip (train and student_test)")
+    plt.legend(title="Partition")
     _savefig("eda_network_size.png")
 
     # 5. Directed reverse-edge check on all available networks.
@@ -129,21 +132,29 @@ def main() -> None:
                 "arcs": len(arcs),
                 "reverse_arc_fraction": reverse_count / len(edge_set) if edge_set else np.nan,
             })
-    pd.DataFrame(connectivity_rows).to_csv(TABLES / "network_connectivity.csv", index=False)
+    pd.DataFrame(connectivity_rows).to_csv(TABLES / "network_connectivity_partitioned.csv", index=False)
 
     # A machine-readable data-quality report for the written report.
-    checks = {
-        "total_trips": int(len(summary)),
-        "train_trips": int((summary["split"] == "train").sum()),
-        "student_test_trips": int((summary["split"] == "student_test").sum()),
-        "trips_with_gap_over_30s": int((summary["gap_over_30s"] > 0).sum()),
-        "trips_with_duplicate_timestamps": int((summary["duplicate_timestamps"] > 0).sum()),
-        "trips_with_nonpositive_dt": int((summary["nonpositive_dt"] > 0).sum()),
-        "rows_with_invalid_coordinates": int(summary["invalid_coordinates"].sum()),
-    }
-    pd.Series(checks, name="value").to_csv(TABLES / "data_quality_checks.csv", header=True)
+    checks = []
+    for split, group in summary.groupby("split"):
+        checks.extend([
+            {"partition": split, "check": "trips", "value": len(group)},
+            {"partition": split, "check": "trips_with_gap_over_30s", "value": int((group["gap_over_30s"] > 0).sum())},
+            {"partition": split, "check": "trips_with_duplicate_timestamps", "value": int((group["duplicate_timestamps"] > 0).sum())},
+            {"partition": split, "check": "trips_with_nonpositive_dt", "value": int((group["nonpositive_dt"] > 0).sum())},
+            {"partition": split, "check": "rows_with_invalid_coordinates", "value": int(group["invalid_coordinates"].sum())},
+        ])
+    pd.DataFrame(checks).to_csv(TABLES / "data_quality_checks_partitioned.csv", index=False)
+    total_gaps = int((summary["gap_over_30s"] > 0).sum())
+    total_duplicates = int((summary["duplicate_timestamps"] > 0).sum())
+    total_nonpositive = int((summary["nonpositive_dt"] > 0).sum())
+    total_invalid = int(summary["invalid_coordinates"].sum())
+    checks_print = {"total_trips": len(summary), "trips_with_gap_over_30s": total_gaps,
+                    "trips_with_duplicate_timestamps": total_duplicates,
+                    "trips_with_nonpositive_dt": total_nonpositive,
+                    "rows_with_invalid_coordinates": total_invalid}
     print(summary.groupby("split")[["gps_points", "nodes", "arcs", "route_arcs"]].agg(["count", "min", "median", "max"]))
-    print(pd.Series(checks))
+    print(pd.Series(checks_print))
     print(f"Wrote tables to {TABLES}")
     print(f"Wrote figures to {OUT}")
 
