@@ -10,7 +10,8 @@ Files owned by Keshav (brief 12.1): `pathsnap/graph.py`, `pathsnap/hmm.py`, `pat
 | `pathsnap/graph.py` | Directed road graph per trip, in the shared `geo.add_xy` frame; `route_distance(arc_a, t_a, arc_b, t_b)`; cut-off Dijkstra cached per source node; `arcs_within_hops` for continuity |
 | `pathsnap/hmm.py` | `viterbi(cands, probs, trip, config)` and `reconstruct_route(matched, trip)` (contract 8.6), plus `classifier_only()` baseline, and `prepare_trip()` / `decode()` used for tuning |
 | `pathsnap/route_metrics.py` | Sequence-level metrics (9.4): `point_accuracy`, `route_continuity`, `route_prf` |
-| `hmm_experiments/tune.py` | Decoder parameter grid on the 80 training trips -> `artifacts/hmm_config.json` |
+| `hmm_experiments/make_oof_probs.py` | Out-of-fold probabilities of the final LightGBM model for the training trips (each trip scored by the fold model that didn't see it; trips 33 and 54 excluded from fitting) |
+| `hmm_experiments/tune.py` | Decoder parameter grid on the training trips (dataset v2: trips 33 and 54 excluded) -> `artifacts/hmm_config.json` |
 | `hmm_experiments/compare.py` | Classifier-only argmax vs classifier + HMM on student_test (table 8.5, plots, Folium maps) |
 | `hmm_experiments/common.py` | Loads a trip through the shared pipeline (`io`, `geo.add_xy`, `candidates`, `labels`), adds placeholder or model probabilities, caches per trip |
 | `tests/test_hmm.py` | Unit tests on a 5-node synthetic network (`python -m pytest tests -q`) |
@@ -49,7 +50,40 @@ All paths come from `config.yaml` and are resolved with pathlib against the repo
 - **Route reconstruction**: collapse consecutive duplicates; insert shortest connecting path between non-adjacent
   arcs (cutoff `max(3 * gap, 1000 m)`); if none, leave the discontinuity.
 
-## Results so far (placeholder emissions — NOT the final model)
+## Final results (LightGBM final model)
+
+Reproduce:
+```bash
+python -m hmm_experiments.make_oof_probs
+python -m hmm_experiments.tune --emission model --probs-train data/processed/oof_probs_train_lightgbm.parquet --name lightgbm
+python -m hmm_experiments.compare --model artifacts/final_model.joblib --name lightgbm
+```
+
+- **Emissions:** the final model is `artifacts/final_model.joblib`, LightGBM with `optimisation/best_params.json`.
+  Tuning uses its out-of-fold probabilities (mean out-of-fold Top-1 0.851 over 5 folds; `results/hmm/oof_probs_lightgbm.json`).
+- **Tuning:** 292 configurations on 78 training trips (dataset v2, trips 33 and 54 excluded).
+  - Files: `results/hmm/tuning_lightgbm.csv`, `best_config_lightgbm.json`, `reports/figures/hmm_beta_sensitivity_lightgbm.png`.
+  - Selected: beta = 20, w_e = 0.1, unreachable penalty = -50, backward tolerance = 50 m, gap_break_s = 120.
+  - Training mean per-trip accuracy after the HMM: 0.9326.
+  - The optimum is a broad plateau. Only the ratio of w_e to beta matters (scaling both gives the same Viterbi path); every top
+    configuration has w_e x beta of about 2-2.5. Backward tolerance is flat from 30 m (0.932) to 100 m, versus 0.852 with none.
+    gap_break_s 30 vs 120 differs by 0.0003.
+- **Student test** (`results/hmm/comparison_lightgbm.csv`, per trip in `student_test_per_trip_lightgbm.csv`):
+
+| Method | Top-1 (pooled) | Top-1 (mean per trip) | Route continuity | Route precision | Route recall | Route F1 |
+|---|---|---|---|---|---|---|
+| Classifier-only argmax (LightGBM) | 0.8566 | 0.8735 | 0.8923 | 0.6310 | 0.9921 | 0.7587 |
+| Classifier + HMM | **0.9246** | **0.9409** | **0.9949** | **0.9510** | **0.9927** | **0.9709** |
+
+  - The HMM improves Top-1 on all 10 trips: least on trip 9 (+0.043), most on trip 76 (+0.091).
+    Figure: `reports/figures/hmm_vs_argmax_lightgbm.png`; maps: `reports/figures/maps/hmm_lightgbm_trip{9,76}_*_gain.html`.
+  - Candidate miss rate 0.27%, so the upper bound on Top-1 is 99.73%. Decoder time is about 0.25 ms per GPS point.
+  - The argmax Top-1 here (0.85663) differs from `optimisation/summary.json` (0.85642) by about 10 points out of roughly 48k.
+    Cause: the known candidate tie-break issue (twin arcs A->B / B->A at equal distance get a machine-dependent order;
+    see the xfail in `tests/test_pipeline.py`). The candidate parquets here were built on Linux.
+- Evaluator-test data was not used for any of this.
+
+## Development results (placeholder emissions — before the final model and before dataset v2)
 
 Regenerated on Python 3.11 with the pinned requirements, using the team's shared candidates and labels.
 

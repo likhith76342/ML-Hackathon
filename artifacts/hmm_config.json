@@ -1,12 +1,12 @@
 {
   "beta": 20.0,
-  "w_e": 2.0,
-  "unreachable_penalty": -100.0,
+  "w_e": 0.1,
+  "unreachable_penalty": -50.0,
   "clip_to_penalty": true,
-  "gap_break_s": 30.0,
+  "gap_break_s": 120.0,
   "emission_eps": 1e-09,
   "min_cutoff_m": 500.0,
   "cutoff_factor": 2.0,
-  "backward_tolerance_m": 30.0,
-  "emission_source": "placeholder"
+  "backward_tolerance_m": 50.0,
+  "emission_source": "lightgbm"
 }
