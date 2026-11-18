@@ -71,7 +71,8 @@ def test_predict_every_trip(client, trip_id):
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["trip_id"] == trip_id
-    for k in ("gps_points", "predicted_route", "classifier_only_route", "metrics", "timings_ms", "mock"):
+    for k in ("gps_points", "predicted_route", "classifier_only_route", "metrics", "timings_ms", "mock",
+              "n_gps_points", "trip_duration_s"):
         assert k in body
     assert set(body["metrics"]) == METRIC_KEYS
     assert set(body["timings_ms"]) == {"candidates", "model", "viterbi", "total"}
@@ -82,12 +83,19 @@ def test_predict_every_trip(client, trip_id):
     assert len(gps) <= 5000
     assert body["predicted_route"] and all(len(line) <= 5000 for line in body["predicted_route"])
 
+    track = load_trip(trip_dir(STUDENT_TEST, trip_id)).track
     # [lat, lon] order: the first point must match the .track file (which stores lon, lat).
-    first = load_trip(trip_dir(STUDENT_TEST, trip_id)).track.iloc[0]
-    assert gps[0] == pytest.approx([first.lat, first.lon])
+    assert gps[0] == pytest.approx([track.iloc[0].lat, track.iloc[0].lon])
+
+    # Plain counts / input-derived values: filled in every mode, from the FULL track.
+    assert body["n_gps_points"] == len(track)
+    assert body["metrics"]["n_points"] == len(track) == body["n_gps_points"]
+    assert body["trip_duration_s"] == pytest.approx(track.t.iloc[-1] - track.t.iloc[0])
+    assert body["trip_duration_s"] > 0
 
     if body["mock"]:
-        assert all(v is None for v in body["metrics"].values()), "mock mode must never report metrics"
+        others = {k: v for k, v in body["metrics"].items() if k != "n_points"}
+        assert all(v is None for v in others.values()), f"mock mode must not report accuracy metrics: {others}"
         assert body["classifier_only_route"] is None
 
 
