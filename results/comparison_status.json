@@ -1,0 +1,13 @@
+{
+  "included": [
+    "logreg",
+    "random_forest"
+  ],
+  "missing": [
+    "knn",
+    "mlp",
+    "lightgbm"
+  ],
+  "status": "preliminary",
+  "metrics_source": "results/<model>/metrics.json"
+}

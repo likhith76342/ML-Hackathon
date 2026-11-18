@@ -1,0 +1,22 @@
+[
+  {
+    "trip_id": 54,
+    "sampling": "every 20th point in track order",
+    "sample_points": 966,
+    "median_nearest_any_road_m": 83.65113529095154,
+    "fraction_nearest_any_road_over_50m": 0.8571428571428571,
+    "median_nearest_reference_arc_m": 137.78516526010554,
+    "fraction_nearest_reference_arc_over_50m": 0.8747412008281573,
+    "fraction_alignment_over_10m_worse_than_nearest_reference": 0.019668737060041408
+  },
+  {
+    "trip_id": 33,
+    "sampling": "every 20th point in track order",
+    "sample_points": 293,
+    "median_nearest_any_road_m": 6.804175470914077,
+    "fraction_nearest_any_road_over_50m": 0.006825938566552901,
+    "median_nearest_reference_arc_m": 118.70310997927076,
+    "fraction_nearest_reference_arc_over_50m": 0.590443686006826,
+    "fraction_alignment_over_10m_worse_than_nearest_reference": 0.0034129692832764505
+  }
+]
