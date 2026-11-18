@@ -1,14 +1,13 @@
 {
   "included": [
     "logreg",
-    "random_forest"
-  ],
-  "missing": [
+    "random_forest",
     "knn",
     "mlp",
     "lightgbm"
   ],
-  "status": "preliminary",
+  "missing": [],
+  "status": "complete",
   "metrics_source": "results/<model>/metrics.json",
   "incompatible": {},
   "dataset_version": 2,
