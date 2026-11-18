@@ -95,7 +95,7 @@ def test_table_values_equal_the_metrics_files(tree):
             assert float(rows[key][col]) == src[col], (key, col)
         assert rows[key]["test_route_continuity_argmax"] == ""          # null stays empty, never invented
         assert json.loads(rows[key]["excluded_trips"]) == [33, 54]
-    md = (tree / "out" / "summary_table.md").read_text()
+    md = (tree / "out" / "summary_table.md").read_text(encoding="utf-8")
     assert "| LightGBM | fam-lightgbm | 84.60 ± 4.00 |" in md               # mean ± std formatting
     assert "N/A" in md                                                     # null continuity shown as N/A
 
