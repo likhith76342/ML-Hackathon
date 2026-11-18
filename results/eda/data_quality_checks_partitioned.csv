@@ -1,0 +1,11 @@
+partition,check,value
+student_test,trips,10
+student_test,trips_with_gap_over_30s,2
+student_test,trips_with_duplicate_timestamps,0
+student_test,trips_with_nonpositive_dt,0
+student_test,rows_with_invalid_coordinates,0
+train,trips,80
+train,trips_with_gap_over_30s,28
+train,trips_with_duplicate_timestamps,0
+train,trips_with_nonpositive_dt,0
+train,rows_with_invalid_coordinates,0
