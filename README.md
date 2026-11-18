@@ -93,13 +93,16 @@ Laptop 1 runs the API. It holds the data, the model and the ground truth. Laptop
 
 ### Laptop 1: API
 
-Run these from the repo root with the venv active. `EVAL_DATA_DIR` is the folder of 8-digit trip folders to serve. Use `student_test` for practice and the evaluator's folder on demo day. If it isn't set, the API uses `api.eval_data_dir` from `config.yaml`. Relative paths resolve against the repo root.
+Run these from the repo root with the venv active. `EVAL_DATA_DIR` is the folder of 8-digit trip folders to serve.
+The API default is `api.eval_data_dir` from `config.yaml`, which is `data/raw/evaluator_test` for the demo; on a dev
+laptop override it with `EVAL_DATA_DIR=data/raw/student_test` (the student-test folder). Relative paths resolve against
+the repo root. Only Laptop 1 needs `data/raw/...`.
 
 macOS / Linux:
 
 ```bash
 source .venv/bin/activate
-export EVAL_DATA_DIR=data/raw/student_test
+export EVAL_DATA_DIR=data/raw/student_test   # dev; demo day uses data/raw/evaluator_test
 uvicorn api.main:app --host 0.0.0.0 --port 8000
 ```
 
@@ -107,17 +110,20 @@ Windows PowerShell:
 
 ```powershell
 .venv\Scripts\Activate.ps1
-$env:EVAL_DATA_DIR = "data/raw/student_test"
+$env:EVAL_DATA_DIR = "data/raw/student_test"   # dev; demo day uses data/raw/evaluator_test
 uvicorn api.main:app --host 0.0.0.0 --port 8000
 ```
 
-On startup the console prints the mode, the data folder and the trip IDs it found. If the folder is missing or has no trip folders, the API refuses to start and says why. Each request then logs one line, which is what the evaluators will look at:
+On startup the console prints the mode, the model file, the HMM config source, the data folder and the trip IDs it found.
+If the folder is missing or has no trip folders, the API refuses to start and says why. Each request then logs one line,
+which is what the evaluators will look at:
 
 ```
-2026-11-18 11:32:02 | INFO    | PREDICT trip=52  client=192.168.1.7     points=262    mode=MOCK | candidates=N/A model=N/A viterbi=N/A total=7.4ms | top1_hmm=N/A top1_argmax=N/A route_f1=N/A
+2026-11-18 11:32:02 | INFO    | PREDICT trip=52  client=192.168.1.7     points=262    mode=REAL | candidates=69ms model=31ms viterbi=146ms total=279ms | top1_argmax=95.4% top1_hmm=100.0% route_f1=98.9%
 ```
 
-Endpoints: `GET /health`, `GET /trips`, `POST /predict` with body `{"trip_id": 52}`. Interactive docs are at `http://<ip>:8000/docs`.
+`GET /health` returns `"status":"ok"`, `"mode":"real"`, `"model":"final_model.joblib"` and `"hmm_config"` (the source of
+`artifacts/hmm_config.json`). Interactive docs are at `http://<ip>:8000/docs`.
 
 ### Find Laptop 1's IP
 
@@ -170,18 +176,13 @@ Requests to `/predict` time out after 900 s. Set `PREDICT_TIMEOUT_S` to change t
 
 ### Choosing the model (`PATHSNAP_MODEL`)
 
-The API serves the classifier at `PATHSNAP_MODEL`. If that isn't set, it uses `api.model_path` in `config.yaml` (default `artifacts/final_model.joblib`). Relative paths resolve against the repo root. The model is loaded once at startup, so restart the API after changing it.
+The API serves the classifier at `PATHSNAP_MODEL`. If that isn't set, it uses `api.model_path` in `config.yaml`
+(default `artifacts/final_model.joblib`, the final tuned LightGBM). Relative paths resolve against the repo root.
+The model is loaded once at startup, so restart the API after changing it.
 
 - Feature columns come from `artifacts/feature_columns.json` if it exists, otherwise from `pathsnap.features.FEATURE_COLUMNS`.
 - The HMM config comes from `artifacts/hmm_config.json` if it exists, otherwise `{"gap_break_s": <config.yaml gap_break_s>}`.
 - If `pathsnap.hmm` raises `NotImplementedError`, the API serves the classifier-only route and returns `"hmm_used": false`. Any other pipeline error is a 500.
-
-Until the tuned final model exists, run with the LightGBM model:
-
-```bash
-export PATHSNAP_MODEL=results/lightgbm/model.joblib        # Windows PowerShell: $env:PATHSNAP_MODEL = "results/lightgbm/model.joblib"
-uvicorn api.main:app --host 0.0.0.0 --port 8000
-```
 
 ### Real vs mock mode
 
