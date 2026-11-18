@@ -95,7 +95,9 @@ ML-Hackathon/                   # repo root
 │   ├── labels.py               # align_points_to_route()             (Zubed)
 │   ├── features.py             # FEATURE_COLUMNS                     (Zubed)
 │   ├── labels.py               # align_points_to_route(), add_labels() (Zubed)
-│   ├── metrics.py              # all metric functions                (Zubed + Keshav)
+│   ├── metrics.py              # candidate + observation metrics     (Zubed)
+│   ├── route_metrics.py        # sequence metrics                    (Keshav)
+│   ├── build_dataset.py        # builds data/processed/*             (Zubed)
 │   ├── graph.py                # road graph, shortest paths          (Keshav)
 │   ├── hmm.py                  # viterbi(), reconstruct_route()      (Keshav)
 │   └── pipeline.py             # predict_trip(), end-to-end          (Likhith)
@@ -123,13 +125,14 @@ ML-Hackathon/                   # repo root
 - Never commit secrets. Do not commit the raw data if it bloats the repo; document where it goes in the README.
 - Every script runs from the repo root, e.g. `python -m models.lightgbm.train`, with paths read from `config.yaml`.
 - Use random seed **42** everywhere (`numpy`, `random`, model `random_state`, Optuna sampler).
-- Use Python **3.10 or 3.11**. Add every library you use to `requirements.txt` with the version you used.
+- Use Python **3.11** on every laptop, and install from the **exactly pinned** `requirements.txt`. This matters: a model saved with one scikit-learn or LightGBM version can fail to load on another, and the API laptop must load models trained on other laptops. Only Likhith edits `requirements.txt`; ask him to add a library.
+- Use `pathlib` and paths from `config.yaml` only. No absolute paths like `C:\Users\...`, and no hand-built paths with `\`. The team mixes Windows and Mac/Linux.
 
 ---
 
 ## 5. Shared constants (`config.yaml`)
 
-Zubed sets the initial values. Change them only by telling the group, because every model's results depend on them.
+Zubed sets the initial values; Likhith is the only one who edits the file. Change values only by telling the group, because every model's results depend on them.
 
 ```yaml
 data_root: data/raw
@@ -154,6 +157,7 @@ Produce one candidate-level dataset that every model trains on, plus the same co
 - Project each trip to **local metres** with an equirectangular projection centred on the trip's mean latitude and longitude:
   `x = R * radians(lon - lon0) * cos(radians(lat0))`, `y = R * radians(lat - lat0)`, with `R = 6371000`.
   This is accurate to well under 1% at city scale and needs no extra dependency. pyproj with UTM is an acceptable alternative, but pick one and use it everywhere. The report must justify the choice (the docs require this).
+- **One coordinate frame for everyone:** `add_xy(trip)` adds `x, y` (metres) to `trip.track` and `trip.nodes`, with the origin **always the mean lon/lat of the track**. Candidates, features and Keshav's graph all call `add_xy` first. Never project with a different origin, or distances computed in different modules won't agree.
 - Helpers to provide: point-to-segment distance and projection parameter `t` in [0, 1], segment bearing (0 to 360, clockwise from north), and absolute angle difference folded to [0, 180].
 
 ### 6.3 Steps
@@ -185,8 +189,10 @@ Produce one candidate-level dataset that every model trains on, plus the same co
 ### 6.4 Output files (contract)
 - `data/processed/train_candidates.parquet` (80 trips)
 - `data/processed/test_candidates.parquet` (10 student-test trips)
-- `data/processed/folds.csv`
-- `data/processed/point_refs.parquet`: one row per GPS point with `trip_id, point_idx, ref_arc, ref_route_pos, ref_dist_m, ref_in_candidates`
+- `data/processed/folds.csv` (**committed to git**)
+- `data/processed/point_refs.parquet`
+
+The parquet files are too big for git. `python -m pathsnap.build_dataset` must be **deterministic** (seed 42), so anyone can regenerate identical files. Zubed also uploads them to a shared team Drive folder so that others don't have to wait for a rebuild. If Zubed changes features, he bumps a `dataset_version` field in `config.yaml` and announces it, and everyone re-downloads and retrains.: one row per GPS point with `trip_id, point_idx, ref_arc, ref_route_pos, ref_dist_m, ref_in_candidates`
 
 ### 6.5 Candidate table schema (contract)
 One row per (GPS point, candidate arc):
@@ -197,8 +203,11 @@ One row per (GPS point, candidate arc):
 | `point_idx` | int | row in `.track` |
 | `t` | float | timestamp |
 | `arc_id` | int | candidate arc; **-1 if the point has no candidates** (one placeholder row) |
+| `proj_t` | float | position along the arc, 0 to 1. **Always present** (the HMM needs it), even if it isn't a model feature |
 | all of `FEATURE_COLUMNS` | float | NaN only on placeholder rows |
 | `label` | int (0/1) | training/test files only, **never produced at inference** |
+
+Rows are sorted by `(point_idx, dist_rank)` with the index reset to 0..n-1. Model probabilities are matched to rows **by position**, so nobody reorders or filters the table between `build_candidates` and `viterbi`. Placeholder rows get probability 0 instead of being dropped.
 
 At inference, `build_candidates(trip)` returns the same table **without `label`**. Training and inference must call the same functions, so that there is no training/serving skew.
 
@@ -245,7 +254,7 @@ Write one reusable function, `eda/maps.py: make_trip_map(trip, layers) -> folium
 - The candidate table can be large (millions of rows). If KNN is too slow, subsample training rows **by trip** (keep all positives and a stratified subset of negatives), and say so in the report. Measure inference time, because KNN is slow at prediction time and that's a legitimate finding.
 
 ### 7.4 MLP
-- `sklearn` `MLPClassifier` inside a Pipeline with `StandardScaler`, or a small PyTorch model.
+- `sklearn` `MLPClassifier` inside a Pipeline with `StandardScaler`. **Don't use PyTorch**: every model must be a sklearn-compatible Pipeline with `predict_proba`, so the API loads them all the same way.
 - Initial configuration: hidden layers (64, 32), ReLU, Adam, `alpha=1e-4`, batch size 512, up to 50 epochs, early stopping.
 - **Required: real training and validation loss curves.** With sklearn, loop `partial_fit` one epoch at a time and compute log loss on a held-out fold after each epoch. Save the curves to `results/mlp/loss_history.csv` and plot them. Do not fabricate curves.
 
@@ -426,7 +435,47 @@ Request flow, where the ground truth lives and why the UI never sees it, how the
 
 ---
 
-## 12. Integration plan and timeline
+## 12. Git workflow and file ownership (avoiding merge conflicts)
+
+Merge conflicts happen when two people edit the same lines of the same file. Since we've split the work by file, **each file has exactly one owner**, and most conflicts simply can't happen.
+
+### 12.1 File ownership
+
+| Owner | Files and folders only they edit |
+|---|---|
+| Zubed | `pathsnap/geo.py`, `candidates.py`, `features.py`, `labels.py`, `metrics.py`, `build_dataset.py`; `models/logreg/`, `models/random_forest/`; `optimisation/`; `results/logreg/`, `results/random_forest/`, `results/comparison.csv`; `data/processed/folds.csv`; `artifacts/final_model.joblib`, `artifacts/feature_columns.json` |
+| Mannu | `eda/` (including `maps.py` and notebooks); `models/knn/`, `models/mlp/`; `results/knn/`, `results/mlp/`; the final report |
+| Keshav | `pathsnap/graph.py`, `hmm.py`, `route_metrics.py`; `hmm_experiments/`; `artifacts/hmm_config.json`; `results/hmm*` |
+| Likhith | `pathsnap/io.py` (starter; Zubed may change it after telling Likhith), `config.py`, `pipeline.py`; `api/`; `ui/`; `models/lightgbm/`; `results/lightgbm/`; `README.md`; `requirements.txt`; `config.yaml`; `.gitignore`, `.gitattributes`; `docs/` |
+
+**Need a change in someone else's file?** Message the owner, or open a PR touching only that change and tag them. Don't quietly edit it on your branch.
+
+**Figures:** prefix your filenames with your area (`eda_…`, `model_knn_…`, `hmm_…`, `api_…`) in `reports/figures/`, so two people never create the same filename.
+
+### 12.2 Branch workflow
+
+1. Clone once, then create your branch: `git checkout -b <yourname>` (`likhith`, `mannu`, `zubed`, `keshav`).
+2. **Before each work session:** `git checkout <yourname>`, `git fetch origin`, then `git merge origin/main`. This brings others' finished work into your branch early, while differences are still small.
+3. Commit small and often, with clear messages (`feat(hmm): gap breaking`, `fix(features): bearing wrap`).
+4. When a piece works, push your branch (`git push origin <yourname>`) and open a **pull request into `main`** on GitHub. Likhith reviews and merges. Merge at least every 1 to 2 hours, not once at the end.
+5. After your PR is merged, merge `main` into your branch again before continuing.
+6. Never `git push --force` to `main`, and never commit directly to `main`. Likhith turns on branch protection for `main` (Settings → Branches) to enforce this.
+
+### 12.3 Things that cause conflicts or broken merges, and the fix
+
+- **Shared config files** (`requirements.txt`, `config.yaml`): only Likhith edits them. Ask him in the group chat.
+- **Jupyter notebooks** are JSON and merge terribly. Only the owner edits a notebook. Clear outputs before committing if it gets large. Put reusable logic in `.py` files, not notebooks.
+- **Line endings** (Windows vs Mac/Linux): handled by `.gitattributes` (`eol=lf`). Don't change it.
+- **Binary files** (`.joblib`, `.parquet`, `.png`): marked binary in `.gitattributes`. If two people produce the same binary file, the owner's version wins.
+- **Large files:** don't commit raw data or the parquet files (`.gitignore` blocks them). Commit `.joblib` model files only if they're under about 50 MB.
+
+### 12.4 If you do hit a conflict
+
+Git marks the conflicting lines with `<<<<<<<`, `=======` and `>>>>>>>`. Open the file and keep the right version (often both changes combined), delete the markers, then `git add <file>` and `git commit`. If the file isn't yours, ask its owner which version to keep. Run your script once before pushing to make sure nothing broke.
+
+---
+
+## 13. Integration plan and timeline
 
 The Deliverables doc says there is a **first-phase evaluation before the lunch break**. We don't know exactly what it checks, so aim to have something real for every part by then.
 
@@ -456,7 +505,7 @@ The Deliverables doc says there is a **first-phase evaluation before the lunch b
 
 ---
 
-## 13. Rules that must never be broken
+## 14. Rules that must never be broken
 
 1. **Never use evaluator-test data** for training, feature selection, choosing a model, choosing thresholds or tuning the decoder. We don't have it anyway; keep it that way until demo day.
 2. **The final model is trained on the 80 training trips.** Student_test is for comparison and decoder checks.
@@ -469,7 +518,7 @@ The Deliverables doc says there is a **first-phase evaluation before the lunch b
 
 ---
 
-## 14. Quick reference: who to ask
+## 15. Quick reference: who to ask
 
 | Question about | Ask |
 |---|---|

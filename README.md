@@ -32,7 +32,9 @@ ML-Hackathon/
 │   ├── candidates.py      build_candidates                         (Zubed)
 │   ├── features.py        FEATURE_COLUMNS                          (Zubed)
 │   ├── labels.py          per-point reference labels               (Zubed)
-│   ├── metrics.py         all metric definitions                   (Zubed, Keshav)
+│   ├── metrics.py         candidate + observation metrics          (Zubed)
+│   ├── route_metrics.py   sequence metrics                         (Keshav)
+│   ├── build_dataset.py   builds data/processed/*                  (Zubed)
 │   ├── graph.py           road graph + route distance              (Keshav)
 │   ├── hmm.py             viterbi + reconstruct_route              (Keshav)
 │   └── pipeline.py        end-to-end predict_trip                  (Likhith)
@@ -75,7 +77,7 @@ All scripts run **from the repo root** as modules, e.g. `python -m models.lightg
 
 | Step | Command | Output |
 |---|---|---|
-| 1. Build candidates, labels, folds | `python -m pathsnap.build_dataset` *(Zubed, TBD)* | `data/processed/*.parquet`, `folds.csv` |
+| 1. Build candidates, labels, folds | `python -m pathsnap.build_dataset` *(Zubed)* | `data/processed/*.parquet`, `folds.csv` |
 | 2. Train each model | `python -m models.<name>.train` | `results/<name>/metrics.json` |
 | 3. Compare models | *(Zubed, TBD)* | `results/comparison.csv`, figures |
 | 4. Bayesian optimisation | *(Zubed, TBD)* | `optimisation/trials.csv`, `artifacts/final_model.joblib` |
@@ -111,9 +113,13 @@ streamlit run ui/app.py
 
 ## Team conventions
 
-- Each person works on a branch named after them (`likhith`, `mannu`, `zubed`, `keshav`) and opens a PR into `main`. Push small and often.
-- Use seed `42` everywhere. Change `config.yaml` only after telling the team.
-- Every model saves `results/<name>/metrics.json` using exactly the keys in the brief (section 10).
+The full rules are in `docs/PathSnap_Team_Brief.pdf`, section 12 (file ownership and Git workflow). In short:
+
+- **Python 3.11** for everyone. Install from the pinned `requirements.txt`, so that models trained on one laptop load on the API laptop.
+- **Each file has one owner.** Only the owner edits it. Likhith owns `requirements.txt` and `config.yaml`, so ask him for changes.
+- Each person works on their own branch (`likhith`, `mannu`, `zubed`, `keshav`). Before every session: `git fetch origin && git merge origin/main`. Push small, open a PR into `main` every 1 to 2 hours, and Likhith merges. Nobody commits to `main` directly.
+- Use seed `42` everywhere. Use `pathlib` and paths from `config.yaml`; no absolute paths.
+- Every model is a scikit-learn Pipeline with `predict_proba`, and saves `results/<name>/metrics.json` with exactly the keys in the brief (section 10).
+- The processed data isn't in git. Regenerate it with `python -m pathsnap.build_dataset` or copy it from the team Drive. `folds.csv` is committed.
 - The prediction path never reads `.route`. Only labelling and the server-side evaluator do.
-- Never commit secrets or the raw data.
-- AI-assistance disclosure goes in the report, as the course policy requires.
+- Never commit secrets or the raw data. The AI-assistance disclosure goes in the report.

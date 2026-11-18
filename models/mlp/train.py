@@ -1,4 +1,6 @@
 """MLP (neural network).  Owner: Mannu.
+Use scikit-learn MLPClassifier (no PyTorch) so the saved model is a normal sklearn Pipeline
+with predict_proba - the API loads every model the same way.
 
 Follow the common training template (brief section 10):
   1. load data/processed/{train,test}_candidates.parquet + folds.csv; drop arc_id == -1 rows for fitting

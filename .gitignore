@@ -1,8 +1,9 @@
 # Raw / processed data (too large for git; see README)
 data/raw/*
 !data/raw/.gitkeep
-data/processed/*.parquet
-data/processed/*.csv
+# processed data is regenerated with `python -m pathsnap.build_dataset` (or copied from the team Drive)
+data/processed/*
+!data/processed/.gitkeep
 !data/processed/folds.csv
 
 # Python

@@ -22,13 +22,4 @@ def candidate_miss_rate(cands,refs):
     match=refs[['trip_id','point_idx','ref_arc']].merge(real,left_on=['trip_id','point_idx','ref_arc'],right_on=['trip_id','point_idx','arc_id'],how='left',indicator=True)
     return float((match['_merge']=='left_only').mean()) if len(match) else float('nan')
 
-# ---- 9.4 sequence-level (Keshav) ------------------------------------------------
-def route_continuity(pred_arcs: list[int], trip, max_hops: int = 3) -> float:
-    """Over consecutive points with different predicted arcs: share reachable within max_hops."""
-    raise NotImplementedError("Keshav: implement (brief 9.4)")
-
-
-def route_prf(pred_route: list[int], true_route: list[int]) -> dict:
-    """precision / recall / f1 over sets of unique arc IDs."""
-    raise NotImplementedError("Keshav: implement (brief 9.4)")
 

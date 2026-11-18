@@ -7,6 +7,8 @@ def project(lon, lat, lon0, lat0):
 
 def add_xy(trip):
     """Add projected x/y to both frames, centered at the mean track coordinate."""
+    if all({'x','y'}.issubset(frame.columns) for frame in (trip.track,trip.nodes)):
+        return trip
     lon0,lat0=trip.track.lon.mean(),trip.track.lat.mean()
     for frame in (trip.track,trip.nodes):
         frame['x'],frame['y']=project(frame.lon,frame.lat,lon0,lat0)
@@ -23,3 +25,4 @@ def bearing_deg(ax,ay,bx,by):
 
 def angle_diff_deg(a,b):
     return np.abs((np.asarray(a)-b+180)%360-180)
+
