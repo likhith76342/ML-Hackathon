@@ -1,0 +1,24 @@
+{
+  "train": {
+    "points": 208417,
+    "misses": 24473,
+    "candidate_miss_rate": 0.1174232428256812,
+    "miss_ref_outside_radius": 23255,
+    "miss_ref_within_radius": 1218,
+    "miss_no_candidates": 18229,
+    "ref_farther_100m": 20538,
+    "max_candidates": 10,
+    "candidate_radius_m": 50.0
+  },
+  "student_test": {
+    "points": 19160,
+    "misses": 52,
+    "candidate_miss_rate": 0.0027139874739039666,
+    "miss_ref_outside_radius": 27,
+    "miss_ref_within_radius": 25,
+    "miss_no_candidates": 0,
+    "ref_farther_100m": 17,
+    "max_candidates": 10,
+    "candidate_radius_m": 50.0
+  }
+}
