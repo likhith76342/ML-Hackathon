@@ -1,0 +1,39 @@
+{
+  "emission_source": "lightgbm",
+  "split": "student_test",
+  "hmm_config": {
+    "beta": 20.0,
+    "w_e": 0.1,
+    "unreachable_penalty": -50.0,
+    "clip_to_penalty": true,
+    "gap_break_s": 120.0,
+    "emission_eps": 1e-09,
+    "min_cutoff_m": 500.0,
+    "cutoff_factor": 2.0,
+    "backward_tolerance_m": 50.0,
+    "emission_source": "lightgbm"
+  },
+  "candidate_miss_rate_pooled": 0.0027139874739039666,
+  "upper_bound_top1": 0.997286012526096,
+  "decoder_ms_per_point_mean": 0.24789977989579054,
+  "summary": [
+    {
+      "method": "Classifier-only argmax",
+      "top1_pooled": 0.8566283924843424,
+      "top1_mean_trip": 0.8735198056021858,
+      "continuity_mean_trip": 0.8922662403369312,
+      "route_precision": 0.6309643968591078,
+      "route_recall": 0.9920981533477834,
+      "route_f1": 0.7586509003754147
+    },
+    {
+      "method": "Classifier + HMM",
+      "top1_pooled": 0.9246346555323591,
+      "top1_mean_trip": 0.9408886226226825,
+      "continuity_mean_trip": 0.9948983395457622,
+      "route_precision": 0.9509798375619392,
+      "route_recall": 0.9926683009568974,
+      "route_f1": 0.9708704771141774
+    }
+  ]
+}

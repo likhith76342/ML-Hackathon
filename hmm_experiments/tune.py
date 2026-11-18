@@ -1,10 +1,15 @@
-"""Tune the HMM decoder parameters on the 80 TRAINING trips (brief 8.3).
+"""Tune the HMM decoder parameters on the TRAINING trips (brief 8.3).
 
     python -m hmm_experiments.tune                                  # placeholder emissions
-    python -m hmm_experiments.tune --emission model --probs-train data/processed/oof_probs_train.parquet
+    python -m hmm_experiments.make_oof_probs                        # out-of-fold final-model probabilities
+    python -m hmm_experiments.tune --emission model --probs-train data/processed/oof_probs_train_lightgbm.parquet \
+                                   --name lightgbm
+
+Dataset v2: trips flagged by pathsnap.quality.flagged_trip_ids() (33, 54) are excluded from tuning, as for model
+fitting. With --emission model the probabilities must be out-of-fold (see make_oof_probs.py).
 
 Search: two-stage grid (coordinate-wise), objective = mean per-trip point accuracy after HMM
-  stage 1  beta x backward_tolerance_m x w_e   (penalty = -50, gap_break_s = 30)
+  stage 1  beta x backward_tolerance_m x w_e   (penalty = -50, gap_break_s from config.yaml)
   stage 2  unreachable_penalty x gap_break_s   (at the stage-1 best)
 Student-test trips are NOT used here; they are only for checking (compare.py).
 Outputs: results/hmm/tuning_<tag>.csv, results/hmm/best_config_<tag>.json, artifacts/hmm_config.json,
@@ -21,15 +26,17 @@ from multiprocessing import Pool
 import numpy as np
 import pandas as pd
 
+from pathsnap.config import CFG
 from pathsnap.hmm import DEFAULT_CONFIG, decode
+from pathsnap.quality import flagged_trip_ids
 from hmm_experiments.common import (PREP_MAX_GAP_S, artifact_file, figure_file, get_trip, load_config,
                                      results_file, split_dirs)
 
 BETAS = [1, 2, 5, 10, 20, 50, 100, 200]
-TOLS = [0, 10, 20, 30, 50]
-WES = [0.5, 1.0, 2.0]
+TOLS = [0, 10, 20, 30, 50, 75, 100]
+WES = [0.1, 0.25, 0.5, 1.0, 2.0]
 PENALTIES = [-20, -50, -100]
-GAPS = [15, 30, 60]
+GAPS = [15, 30, 60, 120]
 
 
 def _load(args):
@@ -54,12 +61,14 @@ def main():
     ap.add_argument("--emission", default="placeholder", choices=["placeholder", "model"])
     ap.add_argument("--probs-train", default=None)
     ap.add_argument("--workers", type=int, default=2)
+    ap.add_argument("--name", default=None, help="label for output files (default: emission source)")
     a = ap.parse_args()
     cfg = load_config()
-    tag = a.emission if a.emission == "placeholder" else "model"
+    tag = a.name or (a.emission if a.emission == "placeholder" else "model")
 
     t0 = time.perf_counter()
-    dirs = split_dirs(cfg, "train")
+    excluded = sorted(flagged_trip_ids())
+    dirs = [d for d in split_dirs(cfg, "train") if int(d.name) not in set(excluded)]
     with Pool(a.workers) as pool:
         preps = pool.map(_load, [(d, cfg, a.emission, a.probs_train) for d in dirs], chunksize=1)
     t_prep = time.perf_counter() - t0
@@ -93,7 +102,9 @@ def main():
     best_cfg = dict(DEFAULT_CONFIG)
     for k in ["beta", "w_e", "unreachable_penalty", "backward_tolerance_m", "gap_break_s"]:
         best_cfg[k] = float(best[k])
-    out = {"emission_source": tag, "objective": "mean per-trip point accuracy after HMM (80 training trips)",
+    out = {"emission_source": tag, "dataset_version": CFG.get("dataset_version"), "excluded_trips": excluded,
+           "n_tuning_trips": len(preps),
+           "objective": f"mean per-trip point accuracy after HMM ({len(preps)} training trips)",
            "train_mean_trip_acc": float(best.train_mean_trip_acc), "train_pooled_acc": float(best.train_pooled_acc),
            "n_configs_evaluated": len(df), "load_prepare_wall_s_incl_cache": t_prep,
            "search_wall_s": float(df.decode_s.sum()), "config": best_cfg}

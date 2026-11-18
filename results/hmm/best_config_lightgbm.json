@@ -1,0 +1,26 @@
+{
+  "emission_source": "lightgbm",
+  "dataset_version": 2,
+  "excluded_trips": [
+    33,
+    54
+  ],
+  "n_tuning_trips": 78,
+  "objective": "mean per-trip point accuracy after HMM (78 training trips)",
+  "train_mean_trip_acc": 0.9325784185220115,
+  "train_pooled_acc": 0.9328113063407181,
+  "n_configs_evaluated": 292,
+  "load_prepare_wall_s_incl_cache": 27.11479331599992,
+  "search_wall_s": 767.6402081999992,
+  "config": {
+    "beta": 20.0,
+    "w_e": 0.1,
+    "unreachable_penalty": -50.0,
+    "clip_to_penalty": true,
+    "gap_break_s": 120.0,
+    "emission_eps": 1e-09,
+    "min_cutoff_m": 500.0,
+    "cutoff_factor": 2.0,
+    "backward_tolerance_m": 50.0
+  }
+}
