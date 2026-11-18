@@ -140,8 +140,24 @@ def fmt_ms(v) -> str:
     return f"{v / 1000:.2f} s" if v >= 1000 else f"{v:.0f} ms"
 
 
+def fmt_duration(s) -> str | None:
+    """Travel time of the GPS track (not processing time)."""
+    if s is None:
+        return None
+    if s < 60:
+        return f"{s:.0f} s"
+    minutes = round(s / 60)
+    return f"{minutes} min" if minutes < 120 else f"{minutes // 60} h {minutes % 60:02d} min"
+
+
 def render_result(result: dict) -> None:
-    st.subheader(f"Trip {result.get('trip_id')}")
+    parts = [f"Trip {result.get('trip_id')}"]
+    duration = fmt_duration(result.get("trip_duration_s"))
+    if duration:
+        parts.append(duration)
+    if result.get("n_gps_points") is not None:
+        parts.append(f"{result['n_gps_points']:,} GPS points")
+    st.subheader(" · ".join(parts))
 
     map_col, side_col = st.columns([3, 1])
     with map_col:
@@ -156,7 +172,8 @@ def render_result(result: dict) -> None:
         metrics = result.get("metrics") or {}
         for key, label, pct in METRIC_LABELS:
             st.metric(label, fmt_metric(metrics.get(key), pct))
-        st.markdown("**Timings**")
+        st.markdown("**Processing time**")
+        st.caption("Server compute time for this request, not the trip's travel time.")
         timings = result.get("timings_ms") or {}
         for key, label in TIMING_LABELS:
             st.metric(label, fmt_ms(timings.get(key)))
@@ -187,7 +204,7 @@ def main() -> None:
         st.caption(f"Model: {health.get('model', '?')}")
     result = st.session_state.get("result") or {}
     if health.get("mode") == "mock" or result.get("mock"):
-        st.error("MOCK MODE: no trained model loaded. The red line is just the GPS track; all metrics are N/A.",
+        st.error("MOCK MODE: no trained model loaded. The red line is just the GPS track; accuracy and route metrics are N/A.",
                  icon="🚨")
     if not trips:
         st.warning("The API reports no trips.")

@@ -158,7 +158,7 @@ The API URL can also be changed in the UI sidebar. Click **Reconnect / refresh t
 
 ### How to tell if you're in mock mode
 
-Mock mode is used automatically when `artifacts/final_model.joblib` doesn't exist. The API then works end to end, but the "predicted route" is just the raw GPS track joined up and **every metric is null**. Nothing is made up. You can tell by any of these:
+Mock mode is used automatically when `artifacts/final_model.joblib` doesn't exist. The API then works end to end, but the "predicted route" is just the raw GPS track joined up and **every accuracy and route metric is null** (only the plain GPS point count `n_points` is filled in). Nothing is made up. You can tell by any of these:
 
 - the API console prints `*** MOCK MODE ... ***` at startup and a `MOCK MODE` warning on each request, and every request line says `mode=MOCK`;
 - `GET /health` returns `"mode": "mock"`, and every `/predict` response has `"mock": true`;

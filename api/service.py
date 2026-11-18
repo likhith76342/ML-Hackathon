@@ -2,7 +2,8 @@
 
 Mode is decided once, at startup:
   * MOCK  - artifacts/final_model.joblib does not exist. The "predicted route" is just the GPS
-            track joined as one polyline and EVERY metric is null. Nothing is fabricated.
+            track joined as one polyline and every accuracy/route metric is null (only the plain
+            GPS point count n_points is filled in). Nothing is fabricated.
   * REAL  - the model, feature columns and HMM config are loaded once, and each request runs
             pathsnap.pipeline.predict_trip (see the TODO in _predict_real).
 
@@ -33,12 +34,18 @@ TIMING_KEYS = ("candidates", "model", "viterbi", "total")   # Brief 11.3
 
 MOCK_WARNING = (
     "MOCK MODE: %s not found - no trained model loaded. predicted_route is the raw GPS "
-    "track and every metric is null."
+    "track and every accuracy/route metric is null."
 )
 
 
 def _ms(seconds: float) -> float:
     return round(seconds * 1000.0, 1)
+
+
+def trip_duration_s(trip) -> float:
+    """Travel time from the INPUT track's first to last timestamp (not ground truth)."""
+    t = trip.track["t"]
+    return round(float(t.iloc[-1] - t.iloc[0]), 3) if len(t) else 0.0
 
 
 class PredictionService:
@@ -98,12 +105,15 @@ class PredictionService:
         t0 = time.perf_counter()
         trip = load_trip(trip_dir)                         # never reads .route
         gps = gps_to_latlon(trip)
+        metrics = null_metrics()
+        metrics["n_points"] = len(gps)     # plain count of the FULL track, not a ground-truth metric
         out = {
             "n_gps_points": len(gps),
+            "trip_duration_s": trip_duration_s(trip),
             "gps_points": simplify_polyline(gps, self.max_points) if len(gps) >= 2 else gps,
             "predicted_route": [simplify_polyline(gps, self.max_points)] if len(gps) >= 2 else [],
             "classifier_only_route": None,
-            "metrics": null_metrics(),
+            "metrics": metrics,
         }
         timings = {k: None for k in TIMING_KEYS}
         timings["total"] = _ms(time.perf_counter() - t0)
@@ -143,6 +153,7 @@ class PredictionService:
         timings["total"] = _ms(time.perf_counter() - t0)
         return {
             "n_gps_points": len(gps),
+            "trip_duration_s": trip_duration_s(trip),
             "gps_points": simplify_polyline(gps, self.max_points) if len(gps) >= 2 else gps,
             "predicted_route": [simplify_polyline(p, self.max_points) for p in predicted],
             "classifier_only_route": classifier_only,
