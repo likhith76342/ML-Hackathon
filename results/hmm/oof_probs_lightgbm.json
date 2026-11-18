@@ -1,0 +1,81 @@
+{
+  "model": "lightgbm (final_model settings)",
+  "params": {
+    "num_leaves": 15,
+    "learning_rate": 0.021656314194980063,
+    "min_child_samples": 10,
+    "colsample_bytree": 0.7347390152853027,
+    "subsample": 0.7834697240695936,
+    "reg_alpha": 7.635962689328252e-06,
+    "reg_lambda": 0.05032833305597619,
+    "n_estimators": 743,
+    "n_jobs": 4
+  },
+  "features": [
+    "dist_m",
+    "dist_rank",
+    "dist_minus_min",
+    "dist_ratio",
+    "bearing_diff",
+    "speed_mps",
+    "heading_valid",
+    "dt_prev",
+    "dt_next",
+    "n_candidates",
+    "arc_length_m",
+    "proj_t"
+  ],
+  "dataset_version": 2,
+  "excluded_from_fit": [
+    33,
+    54
+  ],
+  "oof_top1_mean_over_folds": 0.8506959975783438,
+  "folds": [
+    {
+      "fold": 0,
+      "n_trips_scored": 15,
+      "trips_excluded_from_score": [
+        54
+      ],
+      "oof_top1": 0.8914600043022648,
+      "fit_rows": 934774,
+      "fit_s": 26.40341917299999
+    },
+    {
+      "fold": 1,
+      "n_trips_scored": 16,
+      "trips_excluded_from_score": [],
+      "oof_top1": 0.8550962739041861,
+      "fit_rows": 974154,
+      "fit_s": 25.57765519499999
+    },
+    {
+      "fold": 2,
+      "n_trips_scored": 15,
+      "trips_excluded_from_score": [
+        33
+      ],
+      "oof_top1": 0.8872866293302928,
+      "fit_rows": 977061,
+      "fit_s": 26.283107549999997
+    },
+    {
+      "fold": 3,
+      "n_trips_scored": 16,
+      "trips_excluded_from_score": [],
+      "oof_top1": 0.7644111135899504,
+      "fit_rows": 848093,
+      "fit_s": 23.84862701
+    },
+    {
+      "fold": 4,
+      "n_trips_scored": 16,
+      "trips_excluded_from_score": [],
+      "oof_top1": 0.8552259667650256,
+      "fit_rows": 940802,
+      "fit_s": 25.87082329400002
+    }
+  ],
+  "output": "data/processed/oof_probs_train_lightgbm.parquet"
+}
