@@ -20,6 +20,16 @@ QUICK_TIMEOUT = (5, 15)   # (connect, read) seconds for /health and /trips
 COLOR_PRED = "#e0245e"     # predicted (HMM) route: strong crimson
 COLOR_CLF = "#ff9f1c"      # classifier-only route: orange
 COLOR_GPS = "#1d6fd8"      # GPS points: blue
+CASING_PRED = "#ffffff"    # outline under the red route
+CASING_CLF = "#3d2600"     # outline under the orange route
+
+# (name, tile URL, attribution, shown by default). Keyless providers only; the first one is the default.
+BASE_LAYERS = [
+    ("OpenStreetMap", "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', True),
+    ("Satellite (Esri)", "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+     "Tiles &copy; Esri", False),
+]
 
 
 class ApiError(Exception):
@@ -240,15 +250,9 @@ def build_map(result: dict) -> folium.Map:
 
     center = gps[len(gps) // 2] if gps else [0.0, 0.0]
     m = folium.Map(location=center, zoom_start=13, tiles=None, prefer_canvas=True, control_scale=True)
-    carto = "&copy; OpenStreetMap contributors &copy; CARTO"
-    folium.TileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", attr=carto,
-                     name="Light", show=True).add_to(m)
-    folium.TileLayer("OpenStreetMap", name="Streets", show=False).add_to(m)
-    folium.TileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", attr=carto,
-                     name="Dark", show=False).add_to(m)
-    folium.TileLayer(
-        tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-        attr="Tiles &copy; Esri", name="Satellite", show=False).add_to(m)
+    # Base layers that need no API key. OpenStreetMap standard is the default.
+    for name, url, attr, show in BASE_LAYERS:
+        folium.TileLayer(url, attr=attr, name=name, show=show).add_to(m)
 
     # GPS points first (drawn underneath), as ONE GeoJSON layer so large trips stay responsive.
     fg_gps = folium.FeatureGroup(name="GPS points", show=True)
@@ -258,7 +262,8 @@ def build_map(result: dict) -> folium.Map:
                      "properties": {"label": f"GPS point #{i}"}} for (lat, lon), i in zip(gps, idx)]
         folium.GeoJson(
             {"type": "FeatureCollection", "features": features},
-            marker=folium.CircleMarker(radius=2.5, weight=0, fill=True, fill_color=COLOR_GPS, fill_opacity=0.45),
+            marker=folium.CircleMarker(radius=3, weight=0.8, color="#ffffff", opacity=0.8,
+                                       fill=True, fill_color=COLOR_GPS, fill_opacity=0.6),
             tooltip=folium.GeoJsonTooltip(fields=["label"], labels=False, sticky=False),
             name="gps",
         ).add_to(fg_gps)
@@ -266,15 +271,17 @@ def build_map(result: dict) -> folium.Map:
 
     if clf:
         fg_clf = folium.FeatureGroup(name="Classifier-only route", show=False)
-        for line in clf:
+        for line in clf:          # dark casing so orange stays visible over OSM's orange/yellow roads
             if len(line) >= 2:
-                folium.PolyLine(line, color=COLOR_CLF, weight=3, opacity=0.9, dash_array="6 5").add_to(fg_clf)
+                folium.PolyLine(line, color=CASING_CLF, weight=6, opacity=0.75).add_to(fg_clf)
+                folium.PolyLine(line, color=COLOR_CLF, weight=3.5, opacity=1.0, dash_array="7 5").add_to(fg_clf)
         fg_clf.add_to(m)
 
     fg_pred = folium.FeatureGroup(name="Predicted route", show=True)
-    for line in pred:
+    for line in pred:             # white casing so the red line stands out from OSM's red/pink roads
         if len(line) >= 2:
-            folium.PolyLine(line, color=COLOR_PRED, weight=5, opacity=0.9).add_to(fg_pred)
+            folium.PolyLine(line, color=CASING_PRED, weight=9, opacity=0.9).add_to(fg_pred)
+            folium.PolyLine(line, color=COLOR_PRED, weight=5.5, opacity=1.0).add_to(fg_pred)
     fg_pred.add_to(m)
 
     fg_ends = folium.FeatureGroup(name="Start / end", show=True)
