@@ -1,0 +1,93 @@
+{
+  "excluded_trips": [
+    33,
+    54
+  ],
+  "dataset_version": 2,
+  "n_train_trips": 78,
+  "n_test_trips": 10,
+  "cv_best_iterations": [
+    226,
+    148,
+    286,
+    290,
+    141
+  ],
+  "final_n_estimators": 226,
+  "cv_top1_ref_in_candidates_mean": 0.8628707316476605,
+  "train_top1_ref_in_candidates": 0.8674523643062445,
+  "test_top1_ref_in_candidates": 0.8583839229642035,
+  "metrics": {
+    "model": "lightgbm",
+    "family": "boosting",
+    "config": {
+      "memory": null,
+      "verbose": false,
+      "model__boosting_type": "gbdt",
+      "model__class_weight": null,
+      "model__colsample_bytree": 0.8,
+      "model__importance_type": "split",
+      "model__learning_rate": 0.05,
+      "model__max_depth": -1,
+      "model__min_child_samples": 20,
+      "model__min_child_weight": 0.001,
+      "model__min_split_gain": 0.0,
+      "model__n_estimators": 226,
+      "model__n_jobs": -1,
+      "model__num_leaves": 31,
+      "model__objective": "binary",
+      "model__random_state": 42,
+      "model__reg_alpha": 0.0,
+      "model__reg_lambda": 0.0,
+      "model__subsample": 0.8,
+      "model__subsample_for_bin": 200000,
+      "model__subsample_freq": 1,
+      "model__deterministic": true,
+      "model__force_row_wise": true,
+      "model__verbose": -1,
+      "early_stopping_rounds": 50,
+      "early_stopping_val_fraction_of_trips": 0.15,
+      "cv_best_iterations": [
+        226,
+        148,
+        286,
+        290,
+        141
+      ],
+      "final_n_estimators": 226,
+      "excluded_trips": [
+        33,
+        54
+      ],
+      "dataset_version": 2
+    },
+    "cv_macro_f1_mean": 0.910566528565983,
+    "cv_macro_f1_std": 0.02366646236463714,
+    "cv_top1_mean": 0.8504867742281996,
+    "cv_top1_std": 0.046997900571022565,
+    "cv_log_loss_mean": 0.11380611372072691,
+    "train_top1": 0.8530721379460875,
+    "train_macro_f1": 0.9151530280653732,
+    "test_accuracy": 0.9576008508698625,
+    "test_precision": 0.862207465324265,
+    "test_recall": 0.8425790244923592,
+    "test_macro_f1": 0.91376424798374,
+    "test_log_loss": 0.1040074179681487,
+    "test_top1": 0.8560542797494781,
+    "test_candidate_miss_rate": 0.0027139874739039666,
+    "test_route_continuity_argmax": null,
+    "test_confusion_matrix": [
+      [
+        109949,
+        2573
+      ],
+      [
+        3008,
+        16100
+      ]
+    ],
+    "train_time_s": 7.736611081985757,
+    "inference_ms_per_point": 0.020894235333158987,
+    "seed": 42
+  }
+}
