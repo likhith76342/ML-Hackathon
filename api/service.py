@@ -65,6 +65,7 @@ class PredictionService:
         self.model = None
         self.feature_cols: list[str] | None = None
         self.hmm_config: dict = {}
+        self.hmm_config_source: str = ""
         self.mock = not self.model_path.is_file()
         if self.mock:
             log.warning(MOCK_WARNING, self.model_path)
@@ -101,11 +102,11 @@ class PredictionService:
 
         hmm_path = self.artifacts_dir / HMM_CONFIG_FILE
         if hmm_path.exists():
-            self.hmm_config, hmm_src = json.loads(hmm_path.read_text(encoding="utf-8")), str(hmm_path)
+            self.hmm_config, self.hmm_config_source = json.loads(hmm_path.read_text(encoding="utf-8")), str(hmm_path)
         else:
-            self.hmm_config, hmm_src = {"gap_break_s": CFG["gap_break_s"]}, "default {gap_break_s from config.yaml}"
+            self.hmm_config, self.hmm_config_source = {"gap_break_s": CFG["gap_break_s"]}, "default {gap_break_s from config.yaml}"
         log.info("Loaded model %s (%d features from %s); HMM config from %s.",
-                 self.model_path, len(self.feature_cols), features_src, hmm_src)
+                 self.model_path, len(self.feature_cols), features_src, self.hmm_config_source)
 
     # ------------------------------------------------------------------ public
     def predict(self, trip_dir: Path | str) -> dict[str, Any]:
