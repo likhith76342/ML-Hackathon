@@ -44,7 +44,12 @@ def main() -> None:
     if WORK_DIR.exists():
         shutil.rmtree(WORK_DIR)
     run("git", "clone", "--branch", BRANCH, "--single-branch", REPO_URL, str(WORK_DIR))
-    run(sys.executable, "-m", "pip", "install", "-q", "-r", str(WORK_DIR / "requirements.txt"))
+    # Colab currently uses Python 3.13, while the team requirements are
+    # deliberately pinned for the laptops (Python 3.11). Install only the
+    # packages needed by these two training scripts with Colab-compatible
+    # versions; the saved results remain ordinary sklearn artifacts.
+    run(sys.executable, "-m", "pip", "install", "-q", "--upgrade",
+        "numpy", "pandas", "pyarrow", "scipy", "scikit-learn", "joblib", "pyyaml")
 
     processed = WORK_DIR / "data" / "processed"
     processed.mkdir(parents=True, exist_ok=True)

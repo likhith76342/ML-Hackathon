@@ -1,0 +1,48 @@
+{
+  "model": "knn",
+  "family": "instance-based",
+  "config": {
+    "memory": null,
+    "transform_input": null,
+    "verbose": false,
+    "standardscaler__copy": true,
+    "standardscaler__with_mean": true,
+    "standardscaler__with_std": true,
+    "kneighborsclassifier__algorithm": "auto",
+    "kneighborsclassifier__leaf_size": 30,
+    "kneighborsclassifier__metric": "minkowski",
+    "kneighborsclassifier__metric_params": null,
+    "kneighborsclassifier__n_jobs": -1,
+    "kneighborsclassifier__n_neighbors": 15,
+    "kneighborsclassifier__p": 2,
+    "kneighborsclassifier__weights": "distance"
+  },
+  "cv_macro_f1_mean": 0.8925401993546869,
+  "cv_macro_f1_std": 0.02020876343779687,
+  "cv_top1_mean": 0.7527279949600826,
+  "cv_top1_std": 0.09644078020999654,
+  "cv_log_loss_mean": 0.3768396132962869,
+  "train_top1": null,
+  "train_macro_f1": null,
+  "test_accuracy": 0.9545696269847299,
+  "test_precision": 0.859986837775584,
+  "test_recall": 0.8206510362151979,
+  "test_macro_f1": 0.906694411590788,
+  "test_log_loss": 0.3205626030044664,
+  "test_top1": 0.8454070981210856,
+  "test_candidate_miss_rate": 0.0027139874739039666,
+  "test_route_continuity_argmax": null,
+  "test_confusion_matrix": [
+    [
+      109969,
+      2553
+    ],
+    [
+      3427,
+      15681
+    ]
+  ],
+  "train_time_s": 8.671771199995419,
+  "inference_ms_per_point": 5.659750448851398,
+  "seed": 42
+}
