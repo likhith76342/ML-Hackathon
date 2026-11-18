@@ -1,0 +1,28 @@
+# Raw / processed data (too large for git; see README)
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*.parquet
+data/processed/*.csv
+!data/processed/folds.csv
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+*.egg-info/
+
+# Secrets / local config
+.env
+*.local.yaml
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Large model files (commit only if < ~50 MB; remove the line below for small models)
+results/**/model.joblib

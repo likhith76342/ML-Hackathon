@@ -1,0 +1,27 @@
+# Python 3.10 / 3.11. After installing, pin exact versions with:  pip freeze > requirements.lock.txt
+numpy>=1.26
+pandas>=2.1
+pyarrow>=14.0
+scipy>=1.11
+scikit-learn>=1.4
+lightgbm>=4.3
+optuna>=3.6
+networkx>=3.2
+shapely>=2.0
+pyyaml>=6.0
+matplotlib>=3.8
+seaborn>=0.13
+folium>=0.16
+joblib>=1.3
+
+# API (Laptop 1)
+fastapi>=0.110
+uvicorn[standard]>=0.29
+
+# UI (Laptop 2)
+streamlit>=1.33
+streamlit-folium>=0.20
+requests>=2.31
+
+# notebooks (optional)
+jupyter
