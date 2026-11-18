@@ -3,7 +3,6 @@
   "family": "linear",
   "config": {
     "memory": null,
-    "transform_input": null,
     "verbose": false,
     "standardscaler__copy": true,
     "standardscaler__with_mean": true,
@@ -13,42 +12,43 @@
     "logisticregression__dual": false,
     "logisticregression__fit_intercept": true,
     "logisticregression__intercept_scaling": 1,
-    "logisticregression__l1_ratio": 0.0,
+    "logisticregression__l1_ratio": null,
     "logisticregression__max_iter": 500,
+    "logisticregression__multi_class": "deprecated",
     "logisticregression__n_jobs": null,
-    "logisticregression__penalty": "deprecated",
+    "logisticregression__penalty": "l2",
     "logisticregression__random_state": 42,
     "logisticregression__solver": "lbfgs",
     "logisticregression__tol": 0.0001,
     "logisticregression__verbose": 0,
     "logisticregression__warm_start": false
   },
-  "cv_macro_f1_mean": 0.8813593118178209,
-  "cv_macro_f1_std": 0.03155252477699818,
-  "cv_top1_mean": 0.7621386122946608,
-  "cv_top1_std": 0.10749879628688444,
-  "cv_log_loss_mean": 0.16782047471152847,
-  "train_top1": 0.7388072949903319,
-  "train_macro_f1": 0.8788129117542071,
-  "test_accuracy": 0.9461596900402643,
-  "test_precision": 0.822226987615933,
-  "test_recall": 0.8026481055055474,
-  "test_macro_f1": 0.8904457558537808,
-  "test_log_loss": 0.15288742180148424,
-  "test_top1": 0.8421189979123174,
+  "cv_macro_f1_mean": 0.8814530083215495,
+  "cv_macro_f1_std": 0.01678640674895936,
+  "cv_top1_mean": 0.7563526902339127,
+  "cv_top1_std": 0.09772962119715625,
+  "cv_log_loss_mean": 0.16619026622345062,
+  "train_top1": 0.7390232082795549,
+  "train_macro_f1": 0.8790274906379765,
+  "test_accuracy": 0.9462128694066703,
+  "test_precision": 0.8224664879356568,
+  "test_recall": 0.8027527737073477,
+  "test_macro_f1": 0.8905467255024944,
+  "test_log_loss": 0.1528655294608481,
+  "test_top1": 0.8420146137787057,
   "test_candidate_miss_rate": 0.0027139874739039666,
   "test_route_continuity_argmax": null,
   "test_confusion_matrix": [
     [
-      109206,
-      3316
+      109211,
+      3311
     ],
     [
-      3771,
-      15337
+      3769,
+      15339
     ]
   ],
-  "train_time_s": 3.8131265000001804,
-  "inference_ms_per_point": 0.0017762004175140898,
+  "train_time_s": 4.185281000000032,
+  "inference_ms_per_point": 0.0026740292275513975,
   "seed": 42
 }
