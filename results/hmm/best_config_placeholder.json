@@ -1,0 +1,20 @@
+{
+  "emission_source": "placeholder",
+  "objective": "mean per-trip point accuracy after HMM (80 training trips)",
+  "train_mean_trip_acc": 0.9003918035663894,
+  "train_pooled_acc": 0.8270486572592447,
+  "n_configs_evaluated": 129,
+  "load_prepare_wall_s_incl_cache": 45.04937270400001,
+  "search_wall_s": 378.06017693399986,
+  "config": {
+    "beta": 20.0,
+    "w_e": 2.0,
+    "unreachable_penalty": -100.0,
+    "clip_to_penalty": true,
+    "gap_break_s": 30.0,
+    "emission_eps": 1e-09,
+    "min_cutoff_m": 500.0,
+    "cutoff_factor": 2.0,
+    "backward_tolerance_m": 30.0
+  }
+}
