@@ -1,244 +1,266 @@
 """Evaluator UI - runs on Laptop 2.  Owner: Likhith.  (Brief 11.4)
 
 Run:  API_URL=http://<laptop1-ip>:8000 streamlit run ui/app.py
-Talks to the API over HTTP only - never imports the model or pathsnap, never reads data files.
+Talks to the API over HTTP only. It never imports the PathSnap package or reads data files, and every
+number on the page comes from an API response (nulls show as N/A).
 """
 from __future__ import annotations
 
 import os
+import sys
+from pathlib import Path
 
-import folium
-import requests
-import streamlit as st
-from branca.element import Element
-from streamlit_folium import st_folium
+sys.path.insert(0, str(Path(__file__).resolve().parent))   # sibling helper module, however we're launched
+
+import streamlit as st  # noqa: E402
+from streamlit_folium import st_folium  # noqa: E402
+
+import ui_components as uc  # noqa: E402
 
 DEFAULT_API_URL = os.environ.get("API_URL", "http://localhost:8000")
-QUICK_TIMEOUT = (5, 15)                                                  # (connect, read) seconds
-PREDICT_TIMEOUT = (5, float(os.environ.get("PREDICT_TIMEOUT_S", "600")))  # large trips can be slow
+PREDICT_TIMEOUT = (5, float(os.environ.get("PREDICT_TIMEOUT_S", "900")))   # big trips can take a while
+PIPELINE_LABEL = "Candidates → model → HMM → evaluation"
+MOCK_BANNER = ("MOCK MODE: no trained model loaded. The red line is just the GPS track, and accuracy and "
+               "route metrics are N/A.")
+HMM_NOTICE = "HMM not available yet: showing classifier-only route"
+FOOTER = "Predictions are produced live by the API; ground truth stays on the server."
 
-METRIC_LABELS = [
-    ("top1_point_accuracy_hmm", "Top-1 point accuracy (HMM)", True),
-    ("top1_point_accuracy_argmax", "Top-1 point accuracy (classifier only)", True),
-    ("route_precision", "Route precision", True),
-    ("route_recall", "Route recall", True),
-    ("route_f1", "Route F1", True),
-    ("route_continuity", "Route continuity", True),
-    ("n_points", "GPS points", False),
-    ("n_breaks", "Sequence breaks", False),
-]
-TIMING_LABELS = [("candidates", "Candidates"), ("model", "Model"), ("viterbi", "Viterbi"), ("total", "Total")]
-
-
-class ApiError(Exception):
-    """A failure we can explain to the user in one friendly sentence."""
-
-
-# ----------------------------------------------------------------------------- HTTP
-def call_api(method: str, base: str, path: str, timeout, **kwargs) -> dict:
-    url = base.rstrip("/") + path
-    try:
-        r = requests.request(method, url, timeout=timeout, **kwargs)
-    except requests.exceptions.ConnectTimeout:
-        raise ApiError(f"Timed out connecting to the API at {base}. Check the IP, the network and the firewall.")
-    except requests.exceptions.ReadTimeout:
-        raise ApiError(f"The API at {base} took longer than {timeout[1]:.0f}s to answer. "
-                       "Large trips can be slow - try again, or raise PREDICT_TIMEOUT_S.")
-    except requests.exceptions.ConnectionError:
-        raise ApiError(f"Cannot reach the API at {base}. Is it running, on the same network, "
-                       "and allowed through the firewall (port 8000)?")
-    except requests.exceptions.RequestException as e:
-        raise ApiError(f"Request to {url} failed: {e}")
-
-    if r.status_code != 200:
-        try:
-            detail = r.json().get("detail", r.text)
-        except ValueError:
-            detail = r.text
-        if r.status_code == 404:
-            raise ApiError(f"Not found (404): {detail}")
-        if r.status_code == 422:
-            raise ApiError(f"The API rejected the request (422): {detail}")
-        if r.status_code >= 500:
-            raise ApiError(f"The API hit an error while processing ({r.status_code}): {detail}")
-        raise ApiError(f"Unexpected response {r.status_code}: {detail}")
-    try:
-        return r.json()
-    except ValueError:
-        raise ApiError(f"The API at {base} returned something that isn't JSON. Is API_URL correct?")
+CSS = """
+<style>
+.block-container { padding-top: 2.2rem; padding-bottom: 1.5rem; }
+.ps-title { font-size: 1.9rem; font-weight: 700; letter-spacing: -.01em; margin: 0; line-height: 1.2; }
+.ps-subtitle { color: #9aa4b2; margin: .15rem 0 0 0; font-size: .98rem; }
+.ps-pill { display: inline-flex; align-items: center; gap: .45rem; float: right; margin-top: .4rem;
+           padding: .32rem .8rem; border-radius: 999px; font-size: .86rem; font-weight: 600; }
+.ps-pill-detail { font-weight: 400; opacity: .85; margin-left: .3rem; }
+.ps-dot { width: .55rem; height: .55rem; border-radius: 50%; display: inline-block; }
+.ps-ok  { background: rgba(46,158,68,.16); color: #7ee29a; border: 1px solid rgba(46,158,68,.45); }
+.ps-ok .ps-dot { background: #34c759; }
+.ps-bad { background: rgba(221,51,51,.16); color: #ff8a8a; border: 1px solid rgba(221,51,51,.45); }
+.ps-bad .ps-dot { background: #ff453a; }
+.ps-bars { margin: .2rem 0 .4rem 0; }
+.ps-bar-row { display: grid; grid-template-columns: 8.5rem 1fr 4.6rem; align-items: center; gap: .6rem;
+              margin: .28rem 0; font-size: .9rem; }
+.ps-bar-label { color: #c9d1db; }
+.ps-bar-track { background: rgba(255,255,255,.07); border-radius: 4px; height: .62rem; overflow: hidden; }
+.ps-bar-fill { display: block; height: 100%; background: #2bb3a3; border-radius: 4px; }
+.ps-bar-fill.ps-total { background: #6b7a8f; }
+.ps-bar-value { text-align: right; font-variant-numeric: tabular-nums; color: #e6e9ee; }
+.ps-footer { color: #7d8794; font-size: .82rem; text-align: center; margin-top: 1.6rem;
+             padding-top: .8rem; border-top: 1px solid rgba(255,255,255,.08); }
+.ps-swatch { display: inline-block; width: 1.3rem; height: .28rem; border-radius: 2px; vertical-align: middle;
+             margin-right: .45rem; }
+div[data-testid="stMetric"] { background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.07);
+                              border-radius: 10px; padding: .55rem .75rem; }
+</style>
+"""
 
 
+# ----------------------------------------------------------------------------- data
 @st.cache_data(ttl=60, show_spinner=False)
 def fetch_overview(base: str) -> dict:
     """GET /health and /trips (cached briefly so map interactions don't refetch)."""
-    return {"health": call_api("GET", base, "/health", QUICK_TIMEOUT),
-            "trips": call_api("GET", base, "/trips", QUICK_TIMEOUT)["trips"]}
+    return {"health": uc.call_api("GET", base, "/health", uc.QUICK_TIMEOUT),
+            "trips": uc.call_api("GET", base, "/trips", uc.QUICK_TIMEOUT)["trips"]}
 
 
-# ----------------------------------------------------------------------------- map
-LEGEND_HTML = """
-<div style="position: fixed; bottom: 24px; left: 24px; z-index: 9999; background: white;
-            padding: 8px 12px; border: 1px solid #999; border-radius: 6px; font-size: 13px;
-            line-height: 1.6; box-shadow: 0 1px 4px rgba(0,0,0,.3); color: #222;">
-  <b>Legend</b><br>
-  <span style="color:#1f77b4;">&#9679;</span> GPS points<br>
-  <span style="display:inline-block;width:18px;height:3px;background:#d62728;vertical-align:middle;"></span> Predicted route<br>
-  {orange}
-</div>
-"""
-ORANGE_ROW = ('<span style="display:inline-block;width:18px;height:3px;background:#ff7f0e;'
-              'vertical-align:middle;"></span> Classifier-only route<br>')
+def post_predict(base: str, trip_id: int) -> dict:
+    return uc.call_api("POST", base, "/predict", PREDICT_TIMEOUT, json={"trip_id": int(trip_id)})
 
 
-def build_map(result: dict) -> folium.Map:
-    gps = result.get("gps_points") or []
-    pred = result.get("predicted_route") or []
-    clf = result.get("classifier_only_route") or []
-
-    center = gps[len(gps) // 2] if gps else [0.0, 0.0]
-    m = folium.Map(location=center, zoom_start=13, tiles="OpenStreetMap", control_scale=True)
-
-    fg_pred = folium.FeatureGroup(name="Predicted route (red)", show=True)
-    for line in pred:
-        if len(line) >= 2:
-            folium.PolyLine(line, color="#d62728", weight=4, opacity=0.85).add_to(fg_pred)
-    fg_pred.add_to(m)
-
-    if clf:
-        fg_clf = folium.FeatureGroup(name="Classifier-only route (orange)", show=False)
-        for line in clf:
-            if len(line) >= 2:
-                folium.PolyLine(line, color="#ff7f0e", weight=3, opacity=0.8, dash_array="6 4").add_to(fg_clf)
-        fg_clf.add_to(m)
-
-    fg_gps = folium.FeatureGroup(name="GPS points (blue)", show=True)
-    for lat, lon in gps:
-        folium.CircleMarker([lat, lon], radius=2, color="#1f77b4", weight=1,
-                            fill=True, fill_opacity=0.8).add_to(fg_gps)
-    fg_gps.add_to(m)
-
-    folium.LayerControl(collapsed=False).add_to(m)
-    m.get_root().html.add_child(Element(LEGEND_HTML.format(orange=ORANGE_ROW if clf else "")))
-
-    if gps:
-        lats = [p[0] for p in gps]
-        lons = [p[1] for p in gps]
-        m.fit_bounds([[min(lats), min(lons)], [max(lats), max(lons)]], padding=(20, 20))
-    return m
+def remember_duration(resp: dict) -> None:
+    if uc.is_num(resp.get("trip_duration_s")):
+        st.session_state.setdefault("durations", {})[resp["trip_id"]] = resp["trip_duration_s"]
 
 
-# ----------------------------------------------------------------------------- panels
-def fmt_metric(v, pct: bool) -> str:
-    if v is None:
-        return "N/A"
-    return f"{v * 100:.2f}%" if pct else f"{v:,}"
+# ----------------------------------------------------------------------------- layout pieces
+def render_header(connected: bool, health: dict | None) -> None:
+    left, right = st.columns([3, 2], vertical_alignment="center")
+    with left:
+        st.markdown('<p class="ps-title">PathSnap</p><p class="ps-subtitle">GPS map-matching: classifier + HMM '
+                    'route reconstruction</p>', unsafe_allow_html=True)
+    with right:
+        h = health or {}
+        st.markdown(uc.status_pill_html(connected, h.get("mode"), h.get("model")), unsafe_allow_html=True)
 
 
-def fmt_ms(v) -> str:
-    if v is None:
-        return "N/A"
-    return f"{v / 1000:.2f} s" if v >= 1000 else f"{v:.0f} ms"
+def render_sidebar():
+    with st.sidebar:
+        st.subheader("Connection")
+        api_url = st.text_input("API URL", value=DEFAULT_API_URL, help="e.g. http://192.168.1.20:8000").strip()
+        if st.button("Reconnect", use_container_width=True):
+            fetch_overview.clear()
+        status_slot = st.empty()
+        with st.expander("About this map"):
+            st.markdown(
+                f'<span class="ps-swatch" style="background:{uc.COLOR_PRED}"></span>**Red**: the predicted route '
+                "(the HMM's connected road sequence).<br>"
+                f'<span class="ps-swatch" style="background:{uc.COLOR_CLF}"></span>**Orange**: the classifier-only '
+                "route (best arc per point, no HMM). It's hidden by default; turn it on in the layer menu.<br>"
+                f'<span class="ps-swatch" style="background:{uc.COLOR_GPS};height:.5rem;width:.5rem;'
+                'border-radius:50%"></span>**Blue**: the raw GPS points.<br><br>'
+                "Metrics are computed on the server against the reference route. The reference itself is never "
+                "sent to this page.", unsafe_allow_html=True)
+    return api_url, status_slot
 
 
-def fmt_duration(s) -> str | None:
-    """Travel time of the GPS track (not processing time)."""
-    if s is None:
-        return None
-    if s < 60:
-        return f"{s:.0f} s"
-    minutes = round(s / 60)
-    return f"{minutes} min" if minutes < 120 else f"{minutes // 60} h {minutes % 60:02d} min"
+def render_metrics(result: dict) -> None:
+    m = result.get("metrics") or {}
+    hmm, argmax = m.get("top1_point_accuracy_hmm"), m.get("top1_point_accuracy_argmax")
+    cards = st.columns(7)
+    cards[0].metric("Top-1 (HMM)", uc.fmt_pct(hmm), delta=uc.uplift_pp(hmm, argmax))
+    cards[1].metric("Top-1 (classifier only)", uc.fmt_pct(argmax))
+    cards[2].metric("Route precision", uc.fmt_pct(m.get("route_precision")))
+    cards[3].metric("Route recall", uc.fmt_pct(m.get("route_recall")))
+    cards[4].metric("Route F1", uc.fmt_pct(m.get("route_f1")))
+    cards[5].metric("Route continuity", uc.fmt_pct(m.get("route_continuity")))
+    cards[6].metric("Route breaks", uc.fmt_int(m.get("n_breaks")))
+    left, right = st.columns([2, 5])
+    left.caption("Top-1: share of all GPS points placed on the same road segment as the reference.")
+    right.caption("Precision / recall / F1: overlap between predicted and reference road segments. Continuity: "
+                  "share of segment changes that are physically connected. Breaks: places the HMM had to restart "
+                  "(e.g. long GPS gaps).")
 
 
-def render_result(result: dict) -> None:
+def render_result(result: dict, run_no: int) -> None:
     parts = [f"Trip {result.get('trip_id')}"]
-    duration = fmt_duration(result.get("trip_duration_s"))
-    if duration:
-        parts.append(duration)
-    if result.get("n_gps_points") is not None:
+    d = uc.fmt_duration(result.get("trip_duration_s"))
+    if d:
+        parts.append(d)
+    if uc.is_num(result.get("n_gps_points")):
         parts.append(f"{result['n_gps_points']:,} GPS points")
     st.subheader(" · ".join(parts))
+    if not result.get("mock") and not result.get("hmm_used", True):
+        st.warning(HMM_NOTICE)
 
-    map_col, side_col = st.columns([3, 1])
-    with map_col:
-        st_folium(build_map(result), height=620, use_container_width=True,
-                  returned_objects=[], key=f"map_{result.get('trip_id')}")
-        n_shown, n_total = len(result.get("gps_points") or []), result.get("n_gps_points")
-        if n_total and n_shown < n_total:
-            st.caption(f"Showing {n_shown:,} of {n_total:,} GPS points (thinned for display; "
-                       "metrics use all points).")
-    with side_col:
-        st.markdown("**Metrics**")
-        metrics = result.get("metrics") or {}
-        for key, label, pct in METRIC_LABELS:
-            st.metric(label, fmt_metric(metrics.get(key), pct))
+    render_metrics(result)
+
+    st_folium(uc.build_map(result), height=620, use_container_width=True, returned_objects=[],
+              key=f"map_{run_no}")
+    n_shown, n_total = len(result.get("gps_points") or []), result.get("n_gps_points")
+    if uc.is_num(n_total) and n_shown < n_total:
+        st.caption(f"Showing {n_shown:,} of {n_total:,} GPS points (thinned for display; metrics use all points).")
+
+    t_col, d_col = st.columns([3, 2], gap="large")
+    with t_col:
         st.markdown("**Processing time**")
-        st.caption("Server compute time for this request, not the trip's travel time.")
-        timings = result.get("timings_ms") or {}
-        for key, label in TIMING_LABELS:
-            st.metric(label, fmt_ms(timings.get(key)))
+        st.markdown(uc.timings_bars_html(result.get("timings_ms") or {}), unsafe_allow_html=True)
+        st.caption("Server time to process this trip, end to end. This is not the trip's travel time.")
+    with d_col:
+        st.markdown("**Run details**")
+        st.caption(f"Mode: {'mock' if result.get('mock') else 'real'} · HMM used: "
+                   f"{'yes' if result.get('hmm_used') else 'no'} · Classifier-only layer: "
+                   f"{'available' if result.get('classifier_only_route') else 'not available'}")
+        with st.expander("Raw API response (debug)", expanded=False):
+            st.json(uc.summarize_for_debug(result), expanded=False)
+
+
+def single_trip_tab(api_url: str, trips: list[dict]) -> None:
+    by_id = {t["trip_id"]: t for t in trips}
+    ids = list(by_id)
+    durations = st.session_state.get("durations", {})
+    # A label gains the trip duration after a run, which Streamlit treats as a new widget; remembering the
+    # pick and passing it as the default index keeps the selection instead of jumping back to the first trip.
+    picked = st.session_state.get("picked_trip")
+    pick, go = st.columns([4, 1], vertical_alignment="bottom")
+    with pick:
+        trip_id = st.selectbox("Trip", ids, index=ids.index(picked) if picked in by_id else 0,
+                               format_func=lambda t: uc.trip_label(by_id[t], durations))
+    st.session_state["picked_trip"] = trip_id
+    with go:
+        run = st.button("Run PathSnap", type="primary", use_container_width=True)
+
+    if run:
+        with st.status(PIPELINE_LABEL, expanded=False) as status:
+            st.write(f"Trip {trip_id}: {by_id[trip_id]['n_points']:,} GPS points. Large trips can take a while.")
+            try:
+                resp = post_predict(api_url, trip_id)
+                st.session_state["result"] = resp
+                st.session_state["run_no"] = st.session_state.get("run_no", 0) + 1
+                st.session_state.pop("error", None)
+                remember_duration(resp)
+                total = (resp.get("timings_ms") or {}).get("total")
+                status.update(label=f"Done: trip {trip_id} in {uc.fmt_ms(total)}", state="complete")
+            except uc.ApiError as e:
+                st.session_state["error"] = str(e)
+                status.update(label=f"Trip {trip_id} failed", state="error")
+
+    if st.session_state.get("error"):
+        st.error(st.session_state["error"])
+    if st.session_state.get("result"):
+        render_result(st.session_state["result"], st.session_state.get("run_no", 0))
+    elif not st.session_state.get("error"):
+        st.info("Pick a trip and click **Run PathSnap**.")
+
+
+def run_all_tab(api_url: str, trips: list[dict]) -> None:
+    st.markdown("Runs `/predict` for every trip the API lists, one at a time. All numbers come from the live API.")
+    go, clear, _ = st.columns([1, 1, 3])
+    if go.button("Run all trips", type="primary", use_container_width=True):
+        bar = st.progress(0.0, text="Starting...")
+
+        def progress(i: int, n: int, tid):
+            bar.progress(i / n if n else 1.0, text=f"Trip {tid} ({i + 1}/{n})..." if tid is not None else "Done")
+
+        rows = uc.run_all(lambda tid: post_predict(api_url, tid), [t["trip_id"] for t in trips], progress)
+        for r in rows:
+            if r["response"]:
+                remember_duration(r["response"])
+        st.session_state["run_all"] = {"api_url": api_url, "rows": rows}
+    if clear.button("Clear table", use_container_width=True):
+        st.session_state.pop("run_all", None)
+
+    saved = st.session_state.get("run_all")
+    if not saved:
+        st.info("Click **Run all trips** to fill the table.")
+        return
+    st.dataframe(uc.build_run_all_table(saved["rows"]), hide_index=True, use_container_width=True)
+    st.caption("The last row is computed in this page from the table: Top-1 weighted by each trip's GPS point "
+               "count. It shows N/A if any trip failed or returned no value.")
+    if saved["api_url"] != api_url:
+        st.caption(f"These results came from {saved['api_url']}.")
 
 
 # ----------------------------------------------------------------------------- page
 def main() -> None:
-    st.set_page_config(page_title="PathSnap", page_icon="🗺️", layout="wide")
-    st.title("PathSnap: GPS map-matching")
-
-    with st.sidebar:
-        st.header("Connection")
-        api_url = st.text_input("API URL", value=DEFAULT_API_URL, help="e.g. http://192.168.1.20:8000").strip()
-        if st.button("Reconnect / refresh trips"):
-            fetch_overview.clear()
+    st.set_page_config(page_title="PathSnap", layout="wide", initial_sidebar_state="expanded")
+    st.markdown(CSS, unsafe_allow_html=True)
+    api_url, slot = render_sidebar()
 
     try:
-        overview = fetch_overview(api_url)
-    except ApiError as e:
-        st.error(str(e), icon="🔌")
-        st.info("Start the API on Laptop 1 with `uvicorn api.main:app --host 0.0.0.0 --port 8000`, "
-                f"then check `{api_url}/health` in a browser and click **Reconnect**.")
+        overview, problem = fetch_overview(api_url), None
+    except uc.ApiError as e:
+        overview, problem = None, str(e)
+
+    health = overview["health"] if overview else None
+    render_header(overview is not None, health)
+    if overview is None:
+        slot.error("API unreachable")
+        st.error(problem)
+        st.info("Start the API on Laptop 1 with `uvicorn api.main:app --host 0.0.0.0 --port 8000`, open "
+                f"`{api_url}/health` in a browser to check it, then click **Reconnect**.")
+        st.markdown(f'<div class="ps-footer">{FOOTER}</div>', unsafe_allow_html=True)
         return
 
-    health, trips = overview["health"], overview["trips"]
-    with st.sidebar:
-        st.success(f"Connected: {health.get('n_trips', len(trips))} trips, mode = {health.get('mode', '?')}")
-        st.caption(f"Model: {health.get('model', '?')}")
+    trips = overview["trips"]
+    slot.success(f"Connected · {health.get('n_trips', len(trips))} trips · {health.get('mode', '?')} mode")
+
     result = st.session_state.get("result") or {}
     if health.get("mode") == "mock" or result.get("mock"):
-        st.error("MOCK MODE: no trained model loaded. The red line is just the GPS track; accuracy and route "
-                 "metrics are N/A.", icon="🚨")
+        st.error(MOCK_BANNER)
     else:
         st.caption(f"Model: {health.get('model', '?')}")
+
     if not trips:
         st.warning("The API reports no trips.")
-        return
+    else:
+        single, many = st.tabs(["Single trip", "Run all trips"])
+        with single:
+            single_trip_tab(api_url, trips)
+        with many:
+            run_all_tab(api_url, trips)
 
-    labels = {t["trip_id"]: f"Trip {t['trip_id']}  ({t['n_points']:,} points)" for t in trips}
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        trip_id = st.selectbox("Trip", list(labels), format_func=labels.get)
-    with col2:
-        st.write("")
-        st.write("")
-        run = st.button("Run PathSnap", type="primary", use_container_width=True)
-
-    if run:
-        with st.spinner(f"Running PathSnap on trip {trip_id}... (large trips can take a while)"):
-            try:
-                st.session_state["result"] = call_api("POST", api_url, "/predict", PREDICT_TIMEOUT,
-                                                      json={"trip_id": int(trip_id)})
-                st.session_state.pop("error", None)
-            except ApiError as e:
-                st.session_state["error"] = str(e)
-
-    if st.session_state.get("error"):
-        st.error(st.session_state["error"], icon="⚠️")
-    if st.session_state.get("result"):
-        res = st.session_state["result"]
-        if not res.get("mock") and not res.get("hmm_used", True):
-            st.warning("HMM not available yet: showing classifier-only route", icon="⚠️")
-        render_result(res)
-    elif not st.session_state.get("error"):
-        st.info("Pick a trip and click **Run PathSnap**.")
+    st.markdown(f'<div class="ps-footer">{FOOTER}</div>', unsafe_allow_html=True)
 
 
 try:

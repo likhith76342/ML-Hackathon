@@ -147,7 +147,19 @@ $env:API_URL = "http://<laptop1-ip>:8000"
 streamlit run ui/app.py
 ```
 
-The API URL can also be changed in the UI sidebar. Click **Reconnect / refresh trips** after changing it. Requests to `/predict` time out after 600 s. Set `PREDICT_TIMEOUT_S` to change that.
+Run these from the repo root, so Streamlit picks up the dark theme in `.streamlit/config.toml`.
+
+**What the UI shows** (everything comes from the API; null values show as N/A):
+
+- **Header:** a status pill with the connection state (Connected / Unreachable), the mode (real / mock) and the model file. Mock mode adds a red banner.
+- **Sidebar:** the API URL field, a **Reconnect** button, and an "About this map" note. The API URL can be changed there; click **Reconnect** after changing it.
+- **Single trip tab:** pick a trip and click **Run PathSnap**. The trip label shows the duration once that trip has been run.
+  - The KPI cards show Top-1 (HMM, with the uplift over the classifier in percentage points), Top-1 (classifier only), route precision, recall, F1, continuity and breaks.
+  - The map uses a light base layer, with Streets, Dark and Satellite in the layer menu. It shows the red predicted route, the orange classifier-only route (hidden by default), blue GPS points drawn under the routes, and green start and red end markers.
+  - Below the map: a per-stage **Processing time** panel (server time, not travel time) and a collapsed raw-response expander for debugging.
+- **Run all trips tab:** calls `/predict` for every trip the API lists, one at a time, and fills a table. The last row is a point-weighted overall Top-1 computed in the UI from that table. Results stay in the session until you click **Clear table**.
+
+Requests to `/predict` time out after 900 s. Set `PREDICT_TIMEOUT_S` to change that. The UI talks to the API over HTTP only. It never imports the `pathsnap` package or reads data files, and `tests/test_ui.py` checks this.
 
 ### Checklist
 
