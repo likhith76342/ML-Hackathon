@@ -8,3 +8,4 @@
 *.pkl binary
 *.png binary
 *.pdf binary
+results/knn/model.joblib filter=lfs diff=lfs merge=lfs -text

@@ -33,7 +33,7 @@ def main():
             random_state=CFG["seed"], verbose=False,
         ),
     )
-    run(MODEL_NAME, FAMILY, model)
+    run(MODEL_NAME, FAMILY, model, score_full_train=False)
 
 
 if __name__ == "__main__":

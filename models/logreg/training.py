@@ -7,7 +7,7 @@ from pathsnap.config import CFG,repo_path
 from pathsnap.features import FEATURE_COLUMNS
 from pathsnap.metrics import candidate_metrics,top1_accuracy,candidate_miss_rate
 
-def run(name,family,make_model):
+def run(name,family,make_model,score_full_train=True):
     base=repo_path(CFG['processed_dir']); out=repo_path(CFG['results_dir'])/name; out.mkdir(parents=True,exist_ok=True)
     train=pd.read_parquet(base/'train_candidates.parquet'); test=pd.read_parquet(base/'test_candidates.parquet'); refs=pd.read_parquet(base/'point_refs.parquet'); folds=pd.read_csv(base/'folds.csv')
     if set(train.trip_id.unique())!=set(folds.trip_id): raise ValueError('folds.csv must cover training trips exactly')
@@ -24,7 +24,13 @@ def run(name,family,make_model):
         rows.append({'fold':int(fold),'macro_f1':cand['macro_f1'],'top1':top,'log_loss':cand['log_loss'],'candidate_miss_rate':miss,'accuracy':cand['accuracy'],'precision':cand['precision'],'recall':cand['recall'],'confusion_matrix':json.dumps(cand['confusion_matrix'])}); print(name,'fold',rows[-1],flush=True)
     pd.DataFrame(rows).to_csv(out/'cv_folds.csv',index=False)
     model=make_model(); start=time.perf_counter(); fit(model,train); train_time=time.perf_counter()-start
-    tr,train_top,_,_,_=score(model,train); tc,test_top,miss,elapsed,n=score(model,test)
+    if score_full_train:
+        tr,train_top,_,_,_=score(model,train)
+    else:
+        # Full fitting still uses every training row. Avoid the very expensive
+        # nearest-neighbour prediction over the entire 1.25M-row train table.
+        tr={'macro_f1':None}; train_top=None
+    tc,test_top,miss,elapsed,n=score(model,test)
     joblib.dump(model,out/'model.joblib')
     params={key:value for key,value in model.get_params(deep=True).items() if isinstance(value,(str,int,float,bool,type(None)))}
     d={'model':name,'family':family,'config':params,'cv_macro_f1_mean':float(np.mean([r['macro_f1'] for r in rows])),'cv_macro_f1_std':float(np.std([r['macro_f1'] for r in rows])),'cv_top1_mean':float(np.mean([r['top1'] for r in rows])),'cv_top1_std':float(np.std([r['top1'] for r in rows])),'cv_log_loss_mean':float(np.mean([r['log_loss'] for r in rows])),'train_top1':train_top,'train_macro_f1':tr['macro_f1'],'test_accuracy':tc['accuracy'],'test_precision':tc['precision'],'test_recall':tc['recall'],'test_macro_f1':tc['macro_f1'],'test_log_loss':tc['log_loss'],'test_top1':test_top,'test_candidate_miss_rate':miss,'test_route_continuity_argmax':None,'test_confusion_matrix':tc['confusion_matrix'],'train_time_s':train_time,'inference_ms_per_point':1000*elapsed/n,'seed':CFG['seed']}

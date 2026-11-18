@@ -26,7 +26,7 @@ def main():
         StandardScaler(),
         KNeighborsClassifier(n_neighbors=15, weights="distance", n_jobs=-1),
     )
-    run(MODEL_NAME, FAMILY, model)
+    run(MODEL_NAME, FAMILY, model, score_full_train=False)
 
 
 if __name__ == "__main__":
