@@ -1,3 +1,7 @@
+# Version 1 evidence (superseded for the main comparison)
+
+The values below are the original all-trip results, preserved for the required v1 comparison. Version 2 excludes trips 33 and 54; use the current metrics.json files for the v2 results.
+
 # Zubed: experiment evidence for the team report
 
 Use these as notes for the team's own analysis, not as a substitute for understanding or independently reviewing the results. All figures below come from `results/logreg/metrics.json`, `results/random_forest/metrics.json`, and their fold CSVs. Point-level labels are approximations derived from the supplied reference route. Dataset and model code use the team-pinned environment and 80 training / 10 student-test trips.
@@ -25,3 +29,4 @@ The features are distance, distance rank, distance minus the minimum, distance r
 Logistic regression uses standard scaling and L2-regularised logistic loss (C=1, maximum 500 iterations). The random forest uses 20 trees, maximum depth 15, minimum leaf size 5 and the Gini split criterion. Both use seed 42. In this two-model experiment, random forest scored higher on these aggregate scores but took longer to train and run; inference times are machine-specific. The random forest's train macro F1 exceeds its mean validation-fold macro F1 by about 0.012, which is limited evidence by itself; compare fold-level results and further experiments before diagnosing overfitting. Training and CV top-1 summaries use different averaging, so their raw difference alone does not establish overfitting.
 
 The comparison is preliminary until KNN, MLP and LightGBM results on the same features and folds are available. Candidate macro F1 and log loss are binary candidate-level metrics; top-1 is observation-level. Route continuity is not yet available. The 11.74% overall training miss rate and targeted spatial checks are documented in `INVESTIGATION.md`.
+

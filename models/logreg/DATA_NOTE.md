@@ -1,3 +1,7 @@
+# Historical version 1 notes
+
+For the current version 2 trip-exclusion policy, see V2_NOTES.md. The results below describe the original all-trip experiment.
+
 # Shared feature and training notes
 
 The shared pipeline uses the team config's 50 m candidate radius, up to 10 directed arcs per point, 5 trip-grouped folds and seed 42. `pathsnap.features.FEATURE_COLUMNS` is authoritative. Coordinates are projected around each trip's mean GPS longitude and latitude. Candidate generation indexes complete arc geometry and leaves a placeholder when no arc lies within the radius.
@@ -16,3 +20,4 @@ The earlier preliminary run used Python 3.11.9, NumPy 2.4.6, pandas 3.0.5, SciPy
 The current dataset and grouped folds were regenerated using the pinned versions in requirements.txt. GroupKFold can assign tied trip groups differently across scikit-learn versions; all teammates must use the committed folds.csv rather than independently reassigning folds. The earlier preliminary metrics were produced under a different version and should not be compared with runs using these folds.
 
 Both models have now been refit and evaluated using the team's pinned versions and the regenerated shared folds. Mean grouped-CV Top-1 was 0.7564 for logistic regression and 0.7652 for random forest; student-test Top-1 was 0.8420 and 0.8555, respectively. These are approximate reference-alignment results. The team-wide winner cannot be selected until the other three models report.
+
