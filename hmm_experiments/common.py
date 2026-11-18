@@ -28,7 +28,7 @@ from pathsnap.io import list_trips, load_route, load_trip, trip_dir
 from pathsnap.labels import align_points_to_route
 
 PLACEHOLDER_SIGMA_M = 10.0
-PREP_MAX_GAP_S = 60.0          # largest gap_break_s in the tuning grid
+PREP_MAX_GAP_S = 120.0          # largest gap_break_s in the tuning grid
 
 
 def load_config() -> dict:
