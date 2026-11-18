@@ -227,6 +227,35 @@ def test_map_layers_and_markers():
     assert len({uc.COLOR_PRED, uc.COLOR_CLF, uc.COLOR_GPS}) == 3
 
 
+def _tile_urls(html: str) -> list[str]:
+    return re.findall(r'L\.tileLayer\(\s*"([^"]+)"', html)
+
+
+def test_base_layers_need_no_api_key_and_osm_is_default():
+    """Carto tiles now show an 'API KEY REQUIRED' watermark: no Carto URL may appear anywhere in the UI."""
+    html = uc.build_map(predict_body(52)).get_root().render()
+    urls = _tile_urls(html)
+    assert urls, "no base layers rendered"
+    for url in urls + [u for _, u, _, _ in uc.BASE_LAYERS]:
+        assert "cartocdn" not in url and "carto.com" not in url, url
+    assert "cartocdn" not in html and "carto.com" not in html
+    for path in UI_DIR.glob("*.py"):
+        src = path.read_text(encoding="utf-8").lower()
+        assert "cartocdn" not in src and "carto.com" not in src, path.name
+    assert "tile.openstreetmap.org" in urls[0]                      # first layer = default base map
+    defaults = [name for name, _, _, show in uc.BASE_LAYERS if show]
+    assert defaults == ["OpenStreetMap"] and uc.BASE_LAYERS[0][0] == "OpenStreetMap"
+    assert len(urls) <= 3                                           # default + at most two alternatives
+
+
+def test_routes_have_contrasting_casing():
+    html = uc.build_map(predict_body(52)).get_root().render()
+    casing = html.find('"color": "' + uc.CASING_PRED)
+    red = html.find('"color": "' + uc.COLOR_PRED)
+    assert 0 < casing < red, "white casing must be drawn under the red route"
+    assert 0 < html.find('"color": "' + uc.CASING_CLF) < html.find('"color": "' + uc.COLOR_CLF)
+
+
 def test_display_indices_match_even_thinning():
     assert uc.display_indices(5, 5) == [0, 1, 2, 3, 4]
     idx = uc.display_indices(5000, 7001)
