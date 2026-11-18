@@ -9,5 +9,11 @@
     "lightgbm"
   ],
   "status": "preliminary",
-  "metrics_source": "results/<model>/metrics.json"
+  "metrics_source": "results/<model>/metrics.json",
+  "incompatible": {},
+  "dataset_version": 2,
+  "excluded_trips": [
+    33,
+    54
+  ]
 }
