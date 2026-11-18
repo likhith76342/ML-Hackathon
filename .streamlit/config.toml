@@ -1,0 +1,11 @@
+# PathSnap UI theme - dark, one teal accent. Route colours (red / orange / blue) are set in ui/ui_components.py.
+[theme]
+base = "dark"
+primaryColor = "#2bb3a3"
+backgroundColor = "#0f1318"
+secondaryBackgroundColor = "#1a2029"
+textColor = "#e6e9ee"
+font = "sans serif"
+
+[browser]
+gatherUsageStats = false
