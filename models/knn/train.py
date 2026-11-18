@@ -12,13 +12,21 @@ Run from repo root:  python -m models.knn.train
 """
 from pathsnap.config import CFG
 from pathsnap.features import FEATURE_COLUMNS
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from models.logreg.training import run
 
 MODEL_NAME = "knn"
 FAMILY = "instance-based"
 
 
 def main():
-    raise NotImplementedError("Mannu: implement following brief section 10")
+    model = lambda: make_pipeline(
+        StandardScaler(),
+        KNeighborsClassifier(n_neighbors=15, weights="distance", n_jobs=-1),
+    )
+    run(MODEL_NAME, FAMILY, model)
 
 
 if __name__ == "__main__":
