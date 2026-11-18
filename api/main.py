@@ -96,6 +96,7 @@ def health(request: Request) -> dict:
         "status": "ok",
         "mode": s.mode,
         "model": s.model_name,
+        "hmm_config": s.hmm_config_source,
         "n_trips": len(request.app.state.trips),
         "data_dir": str(request.app.state.data_dir),
     }
