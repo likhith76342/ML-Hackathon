@@ -18,3 +18,9 @@ The team still needs to address the MLP artifact compatibility issue and missing
 
 
 For execution efficiency, from trial 10 onward independent folds run two at a time; trial 9 was interrupted and recorded as failed. The folds, data, scoring, model settings and search space did not change.
+
+## Stopped run: 18 completed trials
+
+At the user's request, the search was stopped after 18 completed trials (three interrupted trials are recorded as failed). This is shorter than the team brief's stated minimum of 50; do not describe it as a 50-trial search. `python -m optimisation.finalize_study` was run to select the highest-CV trial and perform one post-selection student-test evaluation. It requires more than 10 completed trials and checks the recorded dataset and code fingerprint before refitting.
+
+The completed-trial log is `optimisation/trials.csv`; final parameters and measurements are in `best_params.json` and `summary.json`. The CSV includes failed/interrupted trials, which are not part of the 18 completed trials. The search uses no student-test candidate data for parameter choice. The student-test reference rows share the parquet file loaded earlier but are filtered out of CV and scoring until final evaluation.

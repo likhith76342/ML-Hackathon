@@ -1,0 +1,71 @@
+{
+  "model": "lightgbm",
+  "dataset_version": 2,
+  "excluded_trips": [
+    33,
+    54
+  ],
+  "n_completed_trials": 18,
+  "n_failed_trials": 3,
+  "best_trial": 12,
+  "best_cv_top1": 0.8510341766979218,
+  "best_cv_macro_f1": 0.9109511232733041,
+  "best_cv_log_loss": 0.11368544565543715,
+  "best_params": {
+    "num_leaves": 15,
+    "learning_rate": 0.021656314194980063,
+    "min_child_samples": 10,
+    "colsample_bytree": 0.7347390152853027,
+    "subsample": 0.7834697240695936,
+    "reg_alpha": 7.635962689328252e-06,
+    "reg_lambda": 0.05032833305597619,
+    "n_estimators": 743,
+    "n_jobs": 4
+  },
+  "test_top1": 0.856419624217119,
+  "test_macro_f1": 0.9131672695359145,
+  "test_log_loss": 0.10481605628090007,
+  "test_candidate_miss_rate": 0.0027139874739039666,
+  "inference_ms_per_point": 0.1234132672234675,
+  "refit_time_s": 44.90521039999658,
+  "search_trial_time_s_total": 2280.329376,
+  "fold_results": {
+    "top1": [
+      0.8913063519867245,
+      0.8567063153052507,
+      0.8870183440088534,
+      0.7639820837123097,
+      0.8561577884764715
+    ],
+    "macro_f1": [
+      0.9303302643568649,
+      0.912559245964491,
+      0.9309273176791846,
+      0.8673626061579993,
+      0.9135761822079806
+    ],
+    "log_loss": [
+      0.0842252668745587,
+      0.10896540654428069,
+      0.09058570508504478,
+      0.1781191450009181,
+      0.10653170477238351
+    ],
+    "best_iterations": [
+      780,
+      805,
+      453,
+      743,
+      547
+    ]
+  },
+  "baseline": {
+    "cv_top1_mean": 0.8504867742281996,
+    "cv_macro_f1_mean": 0.910566528565983,
+    "test_top1": 0.8560542797494781,
+    "test_macro_f1": 0.91376424798374,
+    "test_log_loss": 0.1040074179681487,
+    "inference_ms_per_point": 0.020894235333158987
+  },
+  "budget_note": "Search stopped at the user's request after more than 10 completed trials; earlier team brief asked for at least 50."
+}

@@ -1,0 +1,14 @@
+[
+  "dist_m",
+  "dist_rank",
+  "dist_minus_min",
+  "dist_ratio",
+  "bearing_diff",
+  "speed_mps",
+  "heading_valid",
+  "dt_prev",
+  "dt_next",
+  "n_candidates",
+  "arc_length_m",
+  "proj_t"
+]

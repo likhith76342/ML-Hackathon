@@ -1,0 +1,11 @@
+{
+  "num_leaves": 15,
+  "learning_rate": 0.021656314194980063,
+  "min_child_samples": 10,
+  "colsample_bytree": 0.7347390152853027,
+  "subsample": 0.7834697240695936,
+  "reg_alpha": 7.635962689328252e-06,
+  "reg_lambda": 0.05032833305597619,
+  "n_estimators": 743,
+  "n_jobs": 4
+}
