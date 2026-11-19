@@ -89,7 +89,7 @@ def test_table_values_equal_the_metrics_files(tree):
         rows = {r["model"]: r for r in csv.DictReader(f)}
     assert set(rows) == {"logreg", "lightgbm"}
     for key in ("logreg", "lightgbm"):
-        src = json.loads((tree / "results" / key / "metrics.json").read_text())
+        src = json.loads((tree / "results" / key / "metrics.json").read_text(encoding="utf-8"))
         for col in ("cv_top1_mean", "cv_top1_std", "cv_macro_f1_mean", "test_top1", "test_macro_f1",
                     "test_log_loss", "train_top1", "train_time_s", "inference_ms_per_point"):
             assert float(rows[key][col]) == src[col], (key, col)
